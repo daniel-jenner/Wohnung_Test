@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtuelle 3D Wohnungswelt</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #111;
+        }
+        canvas {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+        /* Elegantes Gaming-UI */
+        #ui-container {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(15, 15, 25, 0.85);
+            color: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #334466;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+            pointer-events: none;
+            z-index: 10;
+            max-width: 320px;
+        }
+        #room-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #00ddff;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        #instructions {
+            color: #ccc;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        /* Fadenkreuz in der Mitte für echtes First-Person-Gefühl */
+        #crosshair {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            width: 10px;
+            height: 10px;
+            transform: translate(-50%, -50%);
+            border: 2px solid rgba(250, 250, 250, 0.5);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 5;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+    <div id="crosshair"></div>
+
+    <div id="ui-container">
+        <div id="room-title">Lade Wohnung...</div>
+        <div id="instructions">
+            <strong>Steuerung:</strong><br>
+            • Maus gedrückt halten & bewegen zum Umsehen<br>
+            • Klicke direkt auf eine 3D-Zimmertür, um den Raum zu betreten.
+        </div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, environmentSphere;
+        let textureLoader;
+        let isUserInteracting = false;
+        let lon = 0, lat = 0;
+        let onPointerDownMouseX = 0, onPointerDownMouseY = 0;
+        let onPointerDownLon = 0, onPointerDownLat = 0;
+        let phi = 0, theta = 0;
+
+        let raycaster = new THREE.Raycaster();
+        let mouse = new THREE.Vector2();
+        
+        let doors = [];
+
+        // Die Struktur der Wohnung
+        const apartment = {
+            flur: {
+                name: "Zentraler Flur",
+                image: "flur.jpg",
+                // Wir platzieren echte 3D-Türen (Breite, Höhe, Tiefe, X, Y, Z, Rotation-Y, Zielraum, Tür-Farbe)
+                doors: [
+                    { w: 40, h: 90, d: 5, x: -250, y: -40, z: -150, rotY: Math.PI/4,  target: "zimmer1", color: 0x8b5a2b },
+                    { w: 40, h: 90, d: 5, x: -250, y: -40, z: 150,  rotY: -Math.PI/4, target: "zimmer2", color: 0x8b5a2b },
+                    { w: 40, h: 90, d: 5, x: 250,  y: -40, z: -150, rotY: -Math.PI/4, target: "zimmer3", color: 0x8b5a2b },
+                    { w: 40, h: 90, d: 5, x: 250,  y: -40, z: 150,  rotY: Math.PI/4,  target: "bad",    color: 0x226688 },
+                    { w: 60, h: 95, d: 5, x: 0,    y: -40, z: -300, rotY: 0,          target: "balkon", color: 0xdddddd }
+                ]
+            },
+            // Die Zimmer selbst haben nur eine Rückgangs-Tür (wird automatisch hinter dem Spieler platziert)
+            zimmer1: { name: "Zimmer 1", image: "zimmer1.jpg", doors: [{ w: 40, h: 90, d: 5, x: 0, y: -40, z: 250, rotY: 0, target: "flur", color: 0x8b5a2b }] },
+            zimmer2: { name: "Zimmer 2", image: "zimmer2.jpg", doors: [{ w: 40, h: 90, d: 5, x: 0, y: -40, z: 250, rotY: 0, target: "flur", color: 0x8b5a2b }] },
+            zimmer3: { name: "Zimmer 3", image: "zimmer3.jpg", doors: [{ w: 40, h: 90, d: 5, x: 0, y: -40, z: 250, rotY: 0, target: "flur", color: 0x8b5a2b }] },
+            bad:     { name: "Badezimmer", image: "bad.jpg",     doors:
