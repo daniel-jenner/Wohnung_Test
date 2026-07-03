@@ -45,7 +45,7 @@
         <div id="instructions">
             <h2>VIRTUELLE IMMOBILIE (VOGELPERSPEKTIVE)</h2>
             <p style="color: #a0a5b5; line-height: 1.6; font-size: 14px;">
-               Wähle deinen Charakter. Steuerung im Spiel wie bei Pokémon über die 
+               Wähle deinen Charakter. Steuerung im Spiel über die 
                <strong>Pfeiltasten (↑, ↓, ←, →)</strong> deiner Tastatur.<br>
                Räume können auch direkt über die Pfeiltasten wieder verlassen werden!
             </p>
@@ -66,7 +66,7 @@
 
     <script>
         let scene, camera, renderer, playerMesh;
-        let keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
+        let moveUp = false, moveDown = false, moveLeft = false, moveRight = false;
         let audioCtx, musicFilter, stepInterval;
         let insideRoom = null;
         let lastPlayerPos = new THREE.Vector3();
@@ -102,13 +102,12 @@
             mainLight.position.set(20, 200, 50);
             scene.add(mainLight);
 
-            // --- REALISTISCHERER FLUR-BODEN & DETAILS ---
-            // Edler, dunkler Parkettboden für den Flur
+            // Flurboden
             const floorMat = new THREE.MeshStandardMaterial({ color: 0x3d2b1f, roughness: 0.35, metalness: 0.05 });
             const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 300), floorMat);
             floor.rotation.x = -Math.PI / 2; floor.position.set(0, -40, 0); scene.add(floor);
 
-            // Teppiche/Böden der angrenzenden Zimmer
+            // Zimmerböden
             const roomMat1 = new THREE.MeshStandardMaterial({ color: 0x243344, roughness: 0.6 }); 
             const roomMat2 = new THREE.MeshStandardMaterial({ color: 0x2d3a2d, roughness: 0.6 }); 
             const tileMat = new THREE.MeshStandardMaterial({ color: 0x33333b, roughness: 0.3 }); 
@@ -121,7 +120,7 @@
 
             buildWohnungsWaende();
 
-            // Spielfigur initialisieren
+            // Spielfigur
             playerMesh = new THREE.Group();
             playerMesh.position.set(0, -40, 110); 
             buildHumanAvatar(gender);
@@ -130,14 +129,19 @@
             renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('game-canvas'), antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
 
-            // TASTATUR EVENTS (Erweitert um Raum-Verlassen Logik)
+            // Ultra-stabile Tastaturabfrage über e.code (Sicher fürs Deployment!)
             window.addEventListener('keydown', e => { 
-                if(keys.hasOwnProperty(e.key)) {
-                    keys[e.key] = true;
-                    if (insideRoom) leaveRoom(); // Jede Pfeiltaste holt dich sofort zurück!
-                }
+                if (e.code === 'ArrowUp') { moveUp = true; if(insideRoom) leaveRoom(); }
+                if (e.code === 'ArrowDown') { moveDown = true; if(insideRoom) leaveRoom(); }
+                if (e.code === 'ArrowLeft') { moveLeft = true; if(insideRoom) leaveRoom(); }
+                if (e.code === 'ArrowRight') { moveRight = true; if(insideRoom) leaveRoom(); }
             });
-            window.addEventListener('keyup', e => { if(keys.hasOwnProperty(e.key)) keys[e.key] = false; });
+            window.addEventListener('keyup', e => { 
+                if (e.code === 'ArrowUp') moveUp = false;
+                if (e.code === 'ArrowDown') moveDown = false;
+                if (e.code === 'ArrowLeft') moveLeft = false;
+                if (e.code === 'ArrowRight') moveRight = false;
+            });
             window.addEventListener('resize', onWindowResize);
         }
 
@@ -148,9 +152,7 @@
 
         function buildWohnungsWaende() {
             const wallMat = new THREE.MeshStandardMaterial({ color: 0xe2e4e9, roughness: 0.7 });
-            const trimMat = new THREE.MeshStandardMaterial({ color: 0x1f1f2e }); // Fußleisten-Look
 
-            // Flurwände links & rechts mit echten Lücken (Türen) für Realismus
             createWall(8, 50, 60, -50, -15, -120, wallMat); 
             createWall(8, 50, 40, -50, -15, 0, wallMat);   
             createWall(8, 50, 70, -50, -15, 115, wallMat); 
@@ -159,11 +161,9 @@
             createWall(8, 50, 40, 50, -15, 0, wallMat);    
             createWall(8, 50, 70, 50, -15, 115, wallMat);  
 
-            // Querwände hinten am Balkon
             createWall(42, 50, 8, -29, -15, -150, wallMat);
             createWall(42, 50, 8, 29, -15, -150, wallMat);
 
-            // --- PERFEKT LESBARE BESCHRIFTUNG (AUF DEM BODEN) ---
             createFloorSign(-36, -40, "BADEZIMMER");
             createFloorSign(-36, 60, "ZIMMER 1");
             createFloorSign(36, -40, "ZIMMER 2");
@@ -176,7 +176,6 @@
             mesh.position.set(x, y, z); scene.add(mesh);
         }
 
-        // Zeichnet lesbare Namensschilder flach auf den Boden vor die Räume
         function createFloorSign(x, z, text) {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d'); canvas.width = 256; canvas.height = 64;
@@ -186,7 +185,7 @@
 
             const labelMesh = new THREE.Mesh(new THREE.PlaneGeometry(32, 8), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true }));
             labelMesh.position.set(x, -39.8, z);
-            labelMesh.rotation.x = -Math.PI / 2; // Flach hinlegen!
+            labelMesh.rotation.x = -Math.PI / 2; 
             scene.add(labelMesh);
         }
 
@@ -210,12 +209,10 @@
             playerMesh.add(hair);
         }
 
-        // --- DEEP STIMMUNGSVOLLES AUDIO SYSTEM ---
         function initAudio() {
             if (audioCtx) return;
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             
-            // Kontinuierlicher, tiefer Ambient-Pad Sound
             const bufferSize = audioCtx.sampleRate * 4; 
             const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
             const data = buffer.getChannelData(0);
@@ -225,7 +222,7 @@
             noise.buffer = buffer; noise.loop = true;
 
             musicFilter = audioCtx.createBiquadFilter();
-            musicFilter.type = 'lowpass'; musicFilter.frequency.value = 160; // Sehr deep und warm
+            musicFilter.type = 'lowpass'; musicFilter.frequency.value = 160; 
 
             const gainNode = audioCtx.createGain();
             gainNode.gain.value = 0.12; 
@@ -233,10 +230,9 @@
             noise.connect(musicFilter); musicFilter.connect(gainNode); gainNode.connect(audioCtx.destination);
             noise.start();
 
-            // Intervall für rhythmische Schritte bei Bewegung
             stepInterval = setInterval(() => {
-                let anyKeyDown = keys.ArrowUp || keys.ArrowDown || keys.ArrowLeft || keys.ArrowRight;
-                if (anyKeyDown && !insideRoom && gameStarted) {
+                let moving = moveUp || moveDown || moveLeft || moveRight;
+                if (moving && !insideRoom && gameStarted) {
                     playFootstepSound();
                 }
             }, 320);
@@ -246,13 +242,10 @@
             if (!audioCtx) return;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            
             osc.type = 'triangle';
-            osc.frequency.setValueAtTime(65 + Math.random() * 15, audioCtx.currentTime); // Dumpfer Schritt-Sound
-            
+            osc.frequency.setValueAtTime(65 + Math.random() * 15, audioCtx.currentTime); 
             gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
-            
             osc.connect(gain); gain.connect(audioCtx.destination);
             osc.start(); osc.stop(audioCtx.currentTime + 0.13);
         }
@@ -267,7 +260,7 @@
                     lastPlayerPos.copy(playerMesh.position);
                     insideRoom = r;
                     
-                    if(musicFilter) musicFilter.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.5); // Musik dämpfen
+                    if(musicFilter) musicFilter.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.5); 
                     
                     document.getElementById('room-tag').innerText = r.name;
                     document.getElementById('room-photo').src = r.img;
@@ -281,16 +274,15 @@
             document.getElementById('photo-overlay').style.display = 'none';
             insideRoom = null;
             
-            if(musicFilter) musicFilter.frequency.exponentialRampToValueAtTime(160, audioCtx.currentTime + 0.4); // Musik wieder normal
+            if(musicFilter) musicFilter.frequency.exponentialRampToValueAtTime(160, audioCtx.currentTime + 0.4); 
             
             if (playerMesh) {
                 playerMesh.position.copy(lastPlayerPos);
-                // Spielfigur sanft zurück in den Flur schieben
                 if (playerMesh.position.x < 0) playerMesh.position.x += 16;
                 if (playerMesh.position.x > 0) playerMesh.position.x -= 16;
                 if (playerMesh.position.z < -100) playerMesh.position.z += 16;
             }
-            for (let k in keys) keys[k] = false;
+            moveUp = false; moveDown = false; moveLeft = false; moveRight = false;
         }
 
         function onWindowResize() {
@@ -307,12 +299,11 @@
                 const speed = 2.2;
                 let moved = false;
                 
-                if (keys.ArrowUp) { playerMesh.position.z -= speed; playerMesh.rotation.y = Math.PI; moved = true; }
-                if (keys.ArrowDown) { playerMesh.position.z += speed; playerMesh.rotation.y = 0; moved = true; }
-                if (keys.ArrowLeft) { playerMesh.position.x -= speed; playerMesh.rotation.y = -Math.PI / 2; moved = true; }
-                if (keys.ArrowRight) { playerMesh.position.x += speed; playerMesh.rotation.y = Math.PI / 2; moved = true; }
+                if (moveUp) { playerMesh.position.z -= speed; playerMesh.rotation.y = Math.PI; moved = true; }
+                if (moveDown) { playerMesh.position.z += speed; playerMesh.rotation.y = 0; moved = true; }
+                if (moveLeft) { playerMesh.position.x -= speed; playerMesh.rotation.y = -Math.PI / 2; moved = true; }
+                if (moveRight) { playerMesh.position.x += speed; playerMesh.rotation.y = Math.PI / 2; moved = true; }
 
-                // Beinsimulation beim Laufen
                 if (moved && playerMesh.children.length >= 2) {
                     const time = Date.now() * 0.012;
                     playerMesh.children[0].rotation.x = Math.sin(time) * 0.6; 
@@ -322,11 +313,9 @@
                     playerMesh.children[1].rotation.x = 0;
                 }
 
-                // Grenzen des begehbaren Bereichs
                 playerMesh.position.x = Math.max(-44, Math.min(44, playerMesh.position.x));
                 playerMesh.position.z = Math.max(-145, Math.min(145, playerMesh.position.z));
 
-                // Pokémon-Kameraführung
                 camera.position.x = playerMesh.position.x;
                 camera.position.z = playerMesh.position.z + 120;
                 camera.lookAt(playerMesh.position.x, playerMesh.position.y + 10, playerMesh.position.z);
