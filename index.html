@@ -3,28 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minecraft Immobilien Simulator</title>
+    <title>3D Immobilien Simulator</title>
     <style>
-        body, html { margin: 0; padding: 0; overflow: hidden; width: 100vw; height: 100vh; font-family: 'Courier New', Courier, monospace; background-color: #000; }
+        body, html { margin: 0; padding: 0; overflow: hidden; width: 100vw; height: 100vh; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #000; }
         canvas { display: block; width: 100vw; height: 100vh; }
         
-        /* Minecraft-Style Fadenkreuz */
-        #crosshair { position: fixed; top: 50%; left: 50%; width: 14px; height: 14px; transform: translate(-50%, -50%); pointer-events: none; z-index: 5; }
-        #crosshair::before, #crosshair::after { content: ''; position: absolute; background: rgba(255,255,255,0.7); }
-        #crosshair::before { top: 6px; left: 0; width: 14px; height: 2px; }
-        #crosshair::after { top: 0; left: 6px; width: 2px; height: 14px; }
+        /* Fadenkreuz */
+        #crosshair { position: fixed; top: 50%; left: 50%; width: 6px; height: 6px; transform: translate(-50%, -50%); border: 2px solid rgba(255, 255, 255, 0.8); border-radius: 50%; pointer-events: none; z-index: 5; }
 
-        /* Start-Bildschirm / Klick-Zwang für Audio & Maus-Lock */
-        #blocker { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(16, 20, 16, 0.85); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 30; color: #fff; text-align: center; cursor: pointer; }
-        #instructions { padding: 30px; border: 4px solid #555; background: #2c2c2c; box-shadow: inset -4px -4px #111, inset 4px 4px #eee; max-width: 500px; }
-        #instructions h2 { color: #55ff55; text-shadow: 2px 2px #005500; margin-top: 0; }
-        .btn { margin-top: 20px; padding: 10px 20px; background: #5555ff; border: 2px solid #fff; color: white; font-weight: bold; font-size: 16px; cursor: pointer; box-shadow: 2px 2px #000; }
+        /* Start-Bildschirm */
+        #blocker { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(10, 10, 15, 0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 30; color: #fff; text-align: center; cursor: pointer; }
+        #instructions { padding: 30px; border: 1px solid rgba(255,255,255,0.1); background: #14141c; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); max-width: 500px; }
+        #instructions h2 { color: #ffffff; margin-top: 0; font-size: 24px; }
+        .btn { margin-top: 20px; padding: 12px 30px; background: #00ddff; border: none; border-radius: 25px; color: #14141c; font-weight: bold; font-size: 16px; cursor: pointer; transition: transform 0.2s; }
+        .btn:hover { transform: scale(1.05); }
 
         /* 2D-Bild-Overlay (Wenn man einen Raum betritt) */
         #photo-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(5, 5, 5, 0.95); z-index: 20; justify-content: center; align-items: center; flex-direction: column; }
-        #room-photo { max-width: 80vw; max-height: 70vh; border: 6px solid #3c3c3c; box-shadow: 0 20px 50px rgba(0,0,0,0.9); object-fit: contain; background: #222; }
-        #room-tag { color: #ffff55; font-size: 28px; font-weight: bold; margin-bottom: 15px; text-shadow: 2px 2px #555500; }
-        #exit-btn { margin-top: 20px; padding: 12px 30px; font-size: 16px; font-weight: bold; color: white; background: #aa0000; border: 3px solid #ff5555; box-shadow: 3px 3px #000; cursor: pointer; }
+        #room-photo { max-width: 80vw; max-height: 70vh; border-radius: 8px; box-shadow: 0 20px 50px rgba(0,0,0,0.9); object-fit: contain; background: #222; }
+        #room-tag { color: #00ddff; font-size: 26px; font-weight: bold; margin-bottom: 15px; letter-spacing: 1px; }
+        #exit-btn { margin-top: 20px; padding: 12px 35px; font-size: 16px; font-weight: bold; color: white; background: #aa0000; border: none; border-radius: 30px; cursor: pointer; }
         #exit-btn:hover { background: #ff5555; }
     </style>
     <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
@@ -36,20 +34,20 @@
 
     <div id="blocker">
         <div id="instructions">
-            <h2>MINECRAFT IMMOBILIE</h2>
-            <p><strong>STEUERUNG:</strong><br><br>
-               • <strong>W, A, S, D</strong> = Bewegen / Laufen<br>
-               • <strong>Maus</strong> = Umsehen (Kopf drehen)<br>
+            <h2>VIRTUELLER WOHNUNGSRUNDGANG</h2>
+            <p style="color: #a0a5b5; line-height: 1.6;">
+               • <strong>Pfeiltasten (↑, ↓, ←, →)</strong> = Durch die Wohnung laufen<br>
+               • <strong>Maus bewegen</strong> = Umsehen (Kopf drehen)<br>
                • <strong>Leertaste</strong> = Springen
             </p>
-            <button class="btn">SPIEL STARTEN & MUSIK AN</button>
+            <button class="btn">RUNDGANG STARTEN</button>
         </div>
     </div>
 
     <div id="photo-overlay">
-        <div id="room-tag">RAUM GEFUNDEN</div>
+        <div id="room-tag">RAUM</div>
         <img id="room-photo" src="" alt="Raumansicht">
-        <button id="exit-btn" onclick="leaveRoom()">← ZURÜCK ZUM SPIEL</button>
+        <button id="exit-btn" onclick="leaveRoom()">← RAUM VERLASSEN</button>
     </div>
 
     <script>
@@ -57,15 +55,14 @@
         let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, canJump = false;
         let velocity = new THREE.Vector3(), direction = new THREE.Vector3();
         let prevTime = performance.now();
-        let audioCtx, musicNode;
+        let audioCtx;
 
-        // Räume und ihre Koordinaten-Zonen in unserer Minecraft-Welt
         const rooms = [
-            { name: "BADEZIMMER", img: "bad.jpg", xMin: -90, xMax: -40, zMin: -100, zMax: -40 },     // Links 1
-            { name: "ZIMMER 1", img: "zimmer1.jpg", xMin: -90, xMax: -40, zMin: 10, zMax: 70 },      // Links 2
-            { name: "ZIMMER 2", img: "zimmer2.jpg", xMin: 40, xMax: 90, zMin: -100, zMax: -40 },     // Rechts 1
-            { name: "ZIMMER 3", img: "zimmer3.jpg", xMin: 40, xMax: 90, zMin: 10, zMax: 70 },       // Rechts 2
-            { name: "BALKON", img: "balkon.jpg", xMin: -30, xMax: 30, zMin: -150, zMax: -110 }       // Am Ende des Flurs
+            { name: "BADEZIMMER", img: "bad.jpg", xMin: -90, xMax: -40, zMin: -100, zMax: -40 },
+            { name: "ZIMMER 1", img: "zimmer1.jpg", xMin: -90, xMax: -40, zMin: 10, zMax: 70 },
+            { name: "ZIMMER 2", img: "zimmer2.jpg", xMin: 40, xMax: 90, zMin: -100, zMax: -40 },
+            { name: "ZIMMER 3", img: "zimmer3.jpg", xMin: 40, xMax: 90, zMin: 10, zMax: 70 },
+            { name: "BALKON", img: "balkon.jpg", xMin: -30, xMax: 30, zMin: -150, zMax: -110 }
         ];
 
         let insideRoom = null;
@@ -75,17 +72,15 @@
 
         function init() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x4a75a0); // Minecraft Himmelblau
-            scene.fog = new THREE.FogExp2(0x4a75a0, 0.005);
+            scene.background = new THREE.Color(0x1a1a24); 
+            scene.fog = new THREE.FogExp2(0x1a1a24, 0.005);
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
-            camera.position.set(0, 15, 110); // Start im Flur
+            camera.position.set(0, 15, 110); 
 
-            // Lichter für die Block-Schatten
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); scene.add(ambientLight);
-            const sunLight = new THREE.DirectionalLight(0xffffff, 0.8); sunLight.position.set(50, 200, 50); scene.add(sunLight);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+            const sunLight = new THREE.DirectionalLight(0xffffff, 0.6); sunLight.position.set(50, 200, 50); scene.add(sunLight);
 
-            // Steuerung laden
             controls = new THREE.PointerLockControls(camera, document.body);
             
             const blocker = document.getElementById('blocker');
@@ -99,72 +94,59 @@
 
             scene.add(controls.getObject());
 
-            // Tastatur-Abfrage fürs Laufen
+            // Pfeiltasten-Steuerung
             const onKeyDown = function (event) {
                 switch (event.code) {
-                    case 'KeyW': moveForward = true; break;
-                    case 'KeyA': moveLeft = true; break;
-                    case 'KeyS': moveBackward = true; break;
-                    case 'KeyD': moveRight = true; break;
-                    case 'Space': if (canJump === true) velocity.y += 220; canJump = false; break;
+                    case 'ArrowUp': moveForward = true; break;
+                    case 'ArrowLeft': moveLeft = true; break;
+                    case 'ArrowDown': moveBackward = true; break;
+                    case 'ArrowRight': moveRight = true; break;
+                    case 'Space': if (canJump === true) velocity.y += 200; canJump = false; break;
                 }
             };
-            const on someKeyUp = function (event) {
+            const onKeyUp = function (event) {
                 switch (event.code) {
-                    case 'KeyW': moveForward = false; break;
-                    case 'KeyA': moveLeft = false; break;
-                    case 'KeyS': moveBackward = false; break;
-                    case 'KeyD': moveRight = false; break;
+                    case 'ArrowUp': moveForward = false; break;
+                    case 'ArrowLeft': moveLeft = false; break;
+                    case 'ArrowDown': moveBackward = false; break;
+                    case 'ArrowRight': moveRight = false; break;
                 }
             };
             document.addEventListener('keydown', onKeyDown);
-            document.addEventListener('keyup', on someKeyUp);
+            document.addEventListener('keyup', onKeyUp);
 
-            renderer = new THREE.WebGLRenderer({ antialias: false }); // Pixeliger Minecraft-Look ohne Glättung
+            renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.body.appendChild(renderer.domElement);
 
             window.addEventListener('resize', onWindowResize);
 
-            // --- MINECRAFT BLOCK-APARTMENT BAUEN ---
-            buildMinecraftApartment();
+            buildVirtualApartment();
         }
 
-        function buildMinecraftApartment() {
+        function buildVirtualApartment() {
             const geo = new THREE.BoxGeometry(10, 10, 10);
-            
-            // Texturen simulieren über typische Minecraft-Farben
-            const matGras = new THREE.MeshStandardMaterial({ color: 0x559933, roughness: 0.9 }); // Boden außen
-            const matFlur = new THREE.MeshStandardMaterial({ color: 0x7a5c3d, roughness: 0.8 }); // Holz-Flur
-            const matWand = new THREE.MeshStandardMaterial({ color: 0xc3b091, roughness: 1.0 }); // Eichenholz-Wand
-            const matStein = new THREE.MeshStandardMaterial({ color: 0x737373, roughness: 1.0 }); // Fliesen für Bad
+            const matFloor = new THREE.MeshStandardMaterial({ color: 0x423830, roughness: 0.5 }); // Parkett-Stil
+            const matWand = new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.9 }); // Moderne Wände
 
-            // 1. Riesen-Bodenplatte (Erde/Gras)
-            const ground = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000), matGras);
-            ground.rotation.x = -Math.PI/2; ground.position.y = 0; scene.add(ground);
-
-            // 2. Wohnungsgrundriss aus Blöcken hochziehen
-            // Flur-Boden verlegen
+            // Boden verlegen
             for(let z = -120; z <= 120; z+=10) {
                 for(let x = -30; x <= 30; x+=10) {
-                    const block = new THREE.Mesh(geo, matFlur); block.position.set(x, 0, z); scene.add(block);
+                    const block = new THREE.Mesh(geo, matFloor); block.position.set(x, 0, z); scene.add(block);
                 }
             }
 
-            // Wände hochziehen (Höhe: 3 Blöcke)
+            // Wände bauen mit Öffnungen
             for (let h = 10; h <= 30; h += 10) {
-                // Außenwände links & rechts
                 for (let z = -130; z <= 130; z += 10) {
-                    // Lass Öffnungen frei für die Türen nach Vorgabe!
-                    if (z === -70 || z === 40) continue; // Hier kommen die Türen hin
-
+                    if (z === -70 || z === 40) continue; // Türöffnungen frei lassen
                     const wL = new THREE.Mesh(geo, matWand); wL.position.set(-35, h, z); scene.add(wL);
                     const wR = new THREE.Mesh(geo, matWand); wR.position.set(35, h, z); scene.add(wR);
                 }
             }
 
-            // Dekorative Schilder vor den Eingängen platzieren
-            createSign(-32, 25, -70, "BAD");
+            // Schilder über den Türen plazieren
+            createSign(-32, 25, -70, "BADEZIMMER");
             createSign(-32, 25, 40, "ZIMMER 1");
             createSign(32, 25, -70, "ZIMMER 2");
             createSign(32, 25, 40, "ZIMMER 3");
@@ -174,71 +156,56 @@
         function createSign(x, y, z, text) {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d'); canvas.width = 128; canvas.height = 64;
-            ctx.fillStyle = '#aa7744'; ctx.fillRect(0,0,128,64);
-            ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.strokeRect(2,2,124,60);
-            ctx.fillStyle = '#000'; ctx.font = 'bold 16px monospace'; ctx.textAlign='center'; ctx.fillText(text, 64, 38);
+            ctx.fillStyle = '#1f1f2e'; ctx.fillRect(0,0,128,64);
+            ctx.strokeStyle = '#00ddff'; ctx.lineWidth = 2; ctx.strokeRect(2,2,124,60);
+            ctx.fillStyle = '#ffffff'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign='center'; ctx.fillText(text, 64, 38);
             const mesh = new THREE.Mesh(new THREE.PlaneGeometry(16, 8), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(canvas) }));
             mesh.position.set(x, y, z);
             if(x !== 0) mesh.rotation.y = (x > 0) ? -Math.PI/2 : Math.PI/2;
             scene.add(mesh);
         }
 
-        // --- STIMMUNGSVOLLE MUSIK & AUDIO GENERATOR (Ohne Dateien!) ---
         function initAudio() {
             if (audioCtx) return;
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const notes = [220.00, 246.94, 277.18, 329.63, 369.99]; // Ruhiger, moderner Ambient-Loop
             
-            // Loop für die Hintergrundmusik (Sanfter Ambient Synth im Minecraft-Stil)
-            const notes = [196.00, 220.00, 261.63, 293.66, 329.63, 392.00]; // Pentatonische Tonleiter
-            let noteIndex = 0;
-
             setInterval(() => {
-                if (insideRoom) return; // Musik stoppen/leiser machen, wenn man ein Foto ansieht
-                
+                if (insideRoom) return;
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
-                
-                osc.type = 'triangle'; // Weicher Sound
-                osc.frequency.setValueAtTime(notes[Math.floor(Math.random() * notes.length)] / 2, audioCtx.currentTime);
-                
-                gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 3.8);
-                
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(notes[Math.floor(Math.random() * notes.length)], audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 4);
                 osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(); osc.stop(audioCtx.currentTime + 4);
-            }, 3500);
+                osc.start(); osc.stop(audioCtx.currentTime + 4.1);
+            }, 4000);
         }
 
         function playRoomSound() {
             if (!audioCtx) return;
-            // Typischer Spiele-Soundeffekt (Aufsteigender Ton beim Entdecken)
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = 'sine';
-            osc.frequency.setValueAtTime(300, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.3);
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+            osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.2);
+            gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
             osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.35);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.25);
         }
 
-        // --- POSITIONSMESSUNG (Wurde ein Raum betreten?) ---
         function checkRoomCollisions() {
             if (insideRoom) return;
-
             const pos = controls.getObject().position;
 
             for (let i = 0; i < rooms.length; i++) {
                 const r = rooms[i];
                 if (pos.x >= r.xMin && pos.x <= r.xMax && pos.z >= r.zMin && pos.z <= r.zMax) {
-                    // Raum betreten!
                     insideRoom = r;
-                    controls.unlock(); // Maus freigeben
-                    
+                    controls.unlock();
                     playRoomSound();
-
-                    // 2D Foto aufblenden
                     document.getElementById('room-tag').innerText = r.name;
                     document.getElementById('room-photo').src = r.img;
                     document.getElementById('photo-overlay').style.display = 'flex';
@@ -250,14 +217,11 @@
         function leaveRoom() {
             document.getElementById('photo-overlay').style.display = 'none';
             insideRoom = null;
-            
-            // Spielfigur einen Schritt zurück in den sicheren Flur teleportieren
             const pos = controls.getObject().position;
-            if (pos.x < 0) pos.x += 15; // Wenn er von links kam, nach rechts schieben
-            if (pos.x > 0) pos.x -= 15; // Wenn er von rechts kam, nach links schieben
-            if (pos.z < -100) pos.z += 15; // Aus dem Balkon zurückholen
-            
-            controls.lock(); // Zurück in die Ego-Perspektive
+            if (pos.x < 0) pos.x += 15;
+            if (pos.x > 0) pos.x -= 15;
+            if (pos.z < -100) pos.z += 15;
+            controls.lock();
         }
 
         function onWindowResize() {
@@ -266,7 +230,6 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        // --- ENGINE GAME LOOP (Minecraft Physik & Bewegung) ---
         function animate() {
             requestAnimationFrame(animate);
 
@@ -274,10 +237,9 @@
                 const time = performance.now();
                 const delta = (time - prevTime) / 1000;
 
-                // Dämpfung / Reibung der Bewegung
                 velocity.x -= velocity.x * 10.0 * delta;
                 velocity.z -= velocity.z * 10.0 * delta;
-                velocity.y -= 9.8 * 100.0 * delta; // Gravitation / Schwerkraft
+                velocity.y -= 9.8 * 100.0 * delta; 
 
                 direction.z = Number(moveForward) - Number(moveBackward);
                 direction.x = Number(moveRight) - Number(moveLeft);
@@ -291,16 +253,13 @@
 
                 controls.getObject().position.y += (velocity.y * delta);
 
-                // Kollision mit dem Minecraft-Boden
                 if (controls.getObject().position.y < 15) {
                     velocity.y = 0;
                     controls.getObject().position.y = 15;
                     canJump = true;
                 }
 
-                // Prüfen, ob die Figur eine Türschwelle überschritten hat
                 checkRoomCollisions();
-
                 prevTime = time;
             }
 
