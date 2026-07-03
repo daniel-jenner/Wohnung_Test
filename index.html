@@ -43,7 +43,7 @@
 
     <div id="blocker">
         <div id="instructions">
-            <h2>VIRTUELLE IMMOBILIE (VOGELPERSPEKTIVE)</h2>
+            <h2>VIRTUELLE IMMOBILIE</h2>
             <p style="color: #a0a5b5; line-height: 1.6; font-size: 14px;">
                Wähle deinen Charakter. Steuerung im Spiel über die 
                <strong>Pfeiltasten (↑, ↓, ←, →)</strong> deiner Tastatur.<br>
@@ -129,7 +129,7 @@
             renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('game-canvas'), antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
 
-            // Ultra-stabile Tastaturabfrage über e.code (Sicher fürs Deployment!)
+            // Tastatursteuerung
             window.addEventListener('keydown', e => { 
                 if (e.code === 'ArrowUp') { moveUp = true; if(insideRoom) leaveRoom(); }
                 if (e.code === 'ArrowDown') { moveDown = true; if(insideRoom) leaveRoom(); }
@@ -212,42 +212,61 @@
         function initAudio() {
             if (audioCtx) return;
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            
-            const bufferSize = audioCtx.sampleRate * 4; 
-            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-            const data = buffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) { data[i] = Math.random() * 2 - 1; }
 
-            const noise = audioCtx.createBufferSource();
-            noise.buffer = buffer; noise.loop = true;
-
-            musicFilter = audioCtx.createBiquadFilter();
-            musicFilter.type = 'lowpass'; musicFilter.frequency.value = 160; 
-
-            const gainNode = audioCtx.createGain();
-            gainNode.gain.value = 0.12; 
-
-            noise.connect(musicFilter); musicFilter.connect(gainNode); gainNode.connect(audioCtx.destination);
-            noise.start();
+            createAmbientPad(110.00); 
+            createAmbientPad(164.81); 
+            createAmbientPad(220.00); 
 
             stepInterval = setInterval(() => {
                 let moving = moveUp || moveDown || moveLeft || moveRight;
                 if (moving && !insideRoom && gameStarted) {
                     playFootstepSound();
                 }
-            }, 320);
+            }, 360);
+        }
+
+        function createAmbientPad(frequency) {
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            musicFilter = audioCtx.createBiquadFilter();
+            musicFilter.type = 'lowpass';
+            musicFilter.frequency.setValueAtTime(180, audioCtx.currentTime);
+
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+            
+            gainNode.gain.setValueAtTime(0.03, audioCtx.currentTime); 
+
+            osc.connect(musicFilter);
+            musicFilter.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            osc.start();
         }
 
         function playFootstepSound() {
             if (!audioCtx) return;
+            
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(65 + Math.random() * 15, audioCtx.currentTime); 
-            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.13);
+            const filter = audioCtx.createBiquadFilter();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(55 + Math.random() * 10, audioCtx.currentTime);
+            
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(120, audioCtx.currentTime);
+
+            gain.gain.setValueAtTime(0.35, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.16);
         }
 
         function checkPlayerPosition() {
@@ -260,7 +279,9 @@
                     lastPlayerPos.copy(playerMesh.position);
                     insideRoom = r;
                     
-                    if(musicFilter) musicFilter.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.5); 
+                    if (musicFilter) {
+                        musicFilter.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.5);
+                    }
                     
                     document.getElementById('room-tag').innerText = r.name;
                     document.getElementById('room-photo').src = r.img;
@@ -274,7 +295,9 @@
             document.getElementById('photo-overlay').style.display = 'none';
             insideRoom = null;
             
-            if(musicFilter) musicFilter.frequency.exponentialRampToValueAtTime(160, audioCtx.currentTime + 0.4); 
+            if (musicFilter) {
+                musicFilter.frequency.exponentialRampToValueAtTime(180, audioCtx.currentTime + 0.4);
+            }
             
             if (playerMesh) {
                 playerMesh.position.copy(lastPlayerPos);
