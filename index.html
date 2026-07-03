@@ -14,7 +14,7 @@
         #instructions h2 { color: #ffffff; margin-top: 0; font-size: 24px; letter-spacing: 0.5px; }
         
         .char-selection { display: flex; gap: 30px; justify-content: center; margin-top: 25px; }
-        .btn-char { padding: 20px 40px; border: 2px solid rgba(255,255,255,0.2); border-radius: 16px; background: #1f1f2e; font-size: 40px; cursor: pointer; transition: all 0.2s ease; line-height: 1; }
+        .btn-char { padding: 15px 35px; border: 2px solid rgba(255,255,255,0.2); border-radius: 16px; background: #1f1f2e; color: white; font-size: 22px; font-weight: bold; cursor: pointer; transition: all 0.2s ease; line-height: 1; }
         .btn-char:hover { border-color: #00ddff; transform: scale(1.1); box-shadow: 0 0 25px rgba(0, 221, 255, 0.5); }
 
         /* 2D-Bild-Overlay (Wenn man einen Raum betritt) */
@@ -36,8 +36,8 @@
                Steuerung danach über die <strong>Pfeiltasten (↑, ↓, ←, →)</strong> der Tastatur.
             </p>
             <div class="char-selection">
-                <button class="btn-char" onclick="startGame('frau')">👩</button>
-                <button class="btn-char" onclick="startGame('mann')">👨</button>
+                <button class="btn-char" onclick="startGame('frau')">FRAU</button>
+                <button class="btn-char" onclick="startGame('mann')">MANN</button>
             </div>
         </div>
     </div>
@@ -77,12 +77,10 @@
             const spot1 = new THREE.PointLight(0xffffff, 0.7, 400); spot1.position.set(0, 100, -50); scene.add(spot1);
             const spot2 = new THREE.PointLight(0xffffff, 0.5, 400); spot2.position.set(0, 100, 50); scene.add(spot2);
 
-            // Wohnungsboden (Parkett)
             const floorMat = new THREE.MeshStandardMaterial({ color: 0x4a3525, roughness: 0.3, metalness: 0.1 });
             const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 300), floorMat);
             floor.rotation.x = -Math.PI / 2; floor.position.y = -40; scene.add(floor);
 
-            // Wände
             const wallMat = new THREE.MeshStandardMaterial({ color: 0xefefef, roughness: 0.8 });
             const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(300, 100), wallMat); leftWall.position.set(-100, 10, 0); leftWall.rotation.y = Math.PI/2; scene.add(leftWall);
             const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(300, 100), wallMat); rightWall.position.set(100, 10, 0); rightWall.rotation.y = -Math.PI/2; scene.add(rightWall);
@@ -115,24 +113,20 @@
             const shirtMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.6 });
             const hairMat = new THREE.MeshStandardMaterial({ color: hairColor, roughness: 0.8 });
 
-            // Beine / Schuhe
             const legL = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.5, 12, 12), pantsMat); legL.position.set(-2.5, 6, 0);
             const legR = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.5, 12, 12), pantsMat); legR.position.set(2.5, 6, 0);
             const shoeL = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.5, 4), shoeMat); shoeL.position.set(-2.5, 0.75, 1);
             const shoeR = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.5, 4), shoeMat); shoeR.position.set(2.5, 0.75, 1);
             playerMesh.add(legL, legR, shoeL, shoeR);
 
-            // Torso
             const torso = new THREE.Mesh(new THREE.CylinderGeometry(4, 3.5, 14, 16), shirtMat);
             torso.position.y = 19;
             playerMesh.add(torso);
 
-            // Kopf & Hals
             const neck = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 2, 12), skinMat); neck.position.y = 26;
             const head = new THREE.Mesh(new THREE.SphereGeometry(3.8, 16, 16), skinMat); head.position.y = 30;
             playerMesh.add(neck, head);
 
-            // Haare
             if (gender === 'frau') {
                 const hairTop = new THREE.Mesh(new THREE.SphereGeometry(4, 16, 16), hairMat); hairTop.position.set(0, 31, -0.5);
                 const hairBack = new THREE.Mesh(new THREE.BoxGeometry(7.8, 8, 3), hairMat); hairBack.position.set(0, 28, -2.5);
@@ -142,7 +136,6 @@
                 playerMesh.add(hairTop);
             }
 
-            // Arme
             const armL = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1, 11, 12), shirtMat); armL.position.set(-5.5, 18, 0); armL.rotation.z = 0.05;
             const armR = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1, 11, 12), shirtMat); armR.position.set(5.5, 18, 0); armR.rotation.z = -0.05;
             playerMesh.add(armL, armR);
@@ -188,101 +181,4 @@
         function initAudio() {
             if (audioCtx) return;
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const notes = [261.63, 293.66, 329.63, 349.23, 392.00];
-            setInterval(() => {
-                if (insideRoom) return;
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(notes[Math.floor(Math.random() * notes.length)] / 2, audioCtx.currentTime);
-                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 5);
-                osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(); osc.stop(audioCtx.currentTime + 5.1);
-            }, 4500);
-        }
-
-        function playDiscoverSound() {
-            if (!audioCtx) return;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(440, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.25);
-            gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
-            gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.3);
-        }
-
-        function checkPlayerPosition() {
-            if (insideRoom) return;
-            const pos = playerMesh.position;
-
-            for (let i = 0; i < rooms.length; i++) {
-                const r = rooms[i];
-                if (pos.x >= r.xMin && pos.x <= r.xMax && pos.z >= r.zMin && pos.z <= r.zMax) {
-                    lastPlayerPos.copy(playerMesh.position);
-                    insideRoom = r;
-                    playDiscoverSound();
-                    document.getElementById('room-tag').innerText = r.name;
-                    document.getElementById('room-photo').src = r.img;
-                    document.getElementById('photo-overlay').style.display = 'flex';
-                    break;
-                }
-            }
-        }
-
-        function leaveRoom() {
-            document.getElementById('photo-overlay').style.display = 'none';
-            insideRoom = null;
-            playerMesh.position.copy(lastPlayerPos);
-            
-            if (playerMesh.position.x < -50) playerMesh.position.x += 18;
-            if (playerMesh.position.x > 50) playerMesh.position.x -= 18;
-            if (playerMesh.position.z < -100) playerMesh.position.z += 18;
-
-            for (let k in keys) keys[k] = false;
-        }
-
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-
-            if (!insideRoom && playerMesh.children.length > 0) {
-                const speed = 1.8;
-                let moved = false;
-                
-                if (keys.ArrowUp) { playerMesh.position.z -= speed; playerMesh.rotation.y = Math.PI; moved = true; }
-                if (keys.ArrowDown) { playerMesh.position.z += speed; playerMesh.rotation.y = 0; moved = true; }
-                if (keys.ArrowLeft) { playerMesh.position.x -= speed; playerMesh.rotation.y = -Math.PI / 2; moved = true; }
-                if (keys.ArrowRight) { playerMesh.position.x += speed; playerMesh.rotation.y = Math.PI / 2; moved = true; }
-
-                if (moved) {
-                    const time = Date.now() * 0.008;
-                    playerMesh.children[0].rotation.x = Math.sin(time) * 0.4; 
-                    playerMesh.children[1].rotation.x = -Math.sin(time) * 0.4; 
-                } else {
-                    if(playerMesh.children[0]) playerMesh.children[0].rotation.x = 0;
-                    if(playerMesh.children[1]) playerMesh.children[1].rotation.x = 0;
-                }
-
-                playerMesh.position.x = Math.max(-95, Math.min(95, playerMesh.position.x));
-                playerMesh.position.z = Math.max(-145, Math.min(145, playerMesh.position.z));
-
-                camera.position.x = playerMesh.position.x;
-                camera.position.z = playerMesh.position.z + 110;
-
-                checkPlayerPosition();
-            }
-
-            renderer.render(scene, camera);
-        }
-    </script>
-</body>
-</html>
+            const notes =
