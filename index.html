@@ -46,7 +46,7 @@
             <p>
                Wähle deinen Charakter, um die Wohnung zu betreten.<br /><br />
                • <b>Pfeiltasten</b> = Avatar steuern<br />
-               • <b>Zimmer betreten</b> = Laufe direkt durch die Türöffnungen<br />
+               • <b>Zimmer betreten</b> = Laufe direkt auf die Türöffnungen zu<br />
                • <b>Bild schließen</b> = Beliebige Pfeiltaste drücken oder Klick
             </p>
             <div class="char-selection">
@@ -69,29 +69,27 @@
         let insideRoom = null, gameStarted = false, canMove = true, moveTimeout = null;
         let lastPlayerPos = new THREE.Vector3();
 
+        // JETZT EXAKT ABGEPASST: Die Zonen triggern direkt an den begehbaren Flurgrenzen (-36 und 36)
         const rooms = [
-            { name: "BADEZIMMER", img: "bad.jpg", xMin: -50, xMax: -38, zMin: -65, zMax: -15 },
-            { name: "ZIMMER 1", img: "zimmer1.jpg", xMin: -50, xMax: -38, zMin: 35, zMax: 85 },
-            { name: "ZIMMER 2", img: "zimmer2.jpg", xMin: 38, xMax: 50, zMin: -65, zMax: -15 },
-            { name: "ZIMMER 3", img: "zimmer3.jpg", xMin: 38, xMax: 50, zMin: 35, zMax: 85 },
-            { name: "BALKON", img: "balkon.jpg", xMin: -30, xMax: 30, zMin: -150, zMax: -125 }
+            { name: "BADEZIMMER", img: "bad.jpg", xMin: -36, xMax: -30, zMin: -65, zMax: -15 }, // Links oben
+            { name: "ZIMMER 1", img: "zimmer1.jpg", xMin: -36, xMax: -30, zMin: 35, zMax: 85 },   // Links unten
+            { name: "ZIMMER 2", img: "zimmer2.jpg", xMin: 30, xMax: 36, zMin: -65, zMax: -15 },   // Rechts oben
+            { name: "ZIMMER 3", img: "zimmer3.jpg", xMin: 30, xMax: 36, zMin: 35, zMax: 85 },    // Rechts unten
+            { name: "BALKON", img: "balkon.jpg", xMin: -30, xMax: 30, zMin: -145, zMax: -125 }   // Geradeaus hinten
         ];
 
         function chooseAvatar(gender) {
-            // 1. ALLERWICHTIGSTER SCHRITT: Sofort das Menü ausblenden, egal was passiert!
             document.getElementById('blocker').style.display = 'none';
 
-            // 2. Audio-System gesichert laden (verhindert den Skript-Absturz)
             try {
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
                 if (AudioContext) {
                     audioCtx = new AudioContext();
                 }
             } catch (err) {
-                console.warn("Audio blockiert, Spiel startet trotzdem weiter.");
+                console.warn("Audio vom Browser blockiert.");
             }
 
-            // 3. 3D Engine mit winziger Verzögerung aufbauen, damit der Browser den Klick verarbeiten kann
             setTimeout(() => {
                 let canvas = document.createElement('canvas');
                 canvas.id = 'game-canvas';
@@ -322,14 +320,15 @@
             if (playerMesh) {
                 playerMesh.position.copy(lastPlayerPos);
                 
+                // Sanft zurück in den Flur schieben, um Dauerschleifen zu verhindern
                 if (playerMesh.position.x < 0) {
-                    playerMesh.position.x += 16;
+                    playerMesh.position.x += 10;
                 } else if (playerMesh.position.x > 0) {
-                    playerMesh.position.x -= 16;
+                    playerMesh.position.x -= 10;
                 }
                 
-                if (playerMesh.position.z < -100) {
-                    playerMesh.position.z += 16;
+                if (playerMesh.position.z < -120) {
+                    playerMesh.position.z += 10;
                 }
             }
             moveUp = false; 
@@ -360,6 +359,7 @@
                     playerMesh.children[1].rotation.x = 0;
                 }
 
+                // Lauf-Grenzen im Flur
                 playerMesh.position.x = Math.max(-36, Math.min(36, playerMesh.position.x));
                 playerMesh.position.z = Math.max(-145, Math.min(145, playerMesh.position.z));
 
