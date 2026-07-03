@@ -3,188 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Virtueller Immobilien-Rundgang</title>
+    <title>3D Immobilien Simulator</title>
     <style>
-        body, html { margin: 0; padding: 0; overflow: hidden; width: 100vw; height: 100vh; font-family: 'Segoe UI', sans-serif; background-color: #0c0c14; color: #fff; }
-        
-        #game-canvas { display: none; width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
-
-        /* Start-Bildschirm & Charakterauswahl */
-        #blocker { 
-            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; 
-            background: #0a0a14; display: flex; flex-direction: column; 
-            justify-content: center; align-items: center; z-index: 9999; text-align: center; 
-        }
-        #instructions { 
-            padding: 35px; border: 1px solid rgba(255,255,255,0.1); 
-            background: #111116; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); 
-            max-width: 500px; margin-bottom: 20px;
-        }
+        body, html { margin: 0; padding: 0; overflow: hidden; width: 100vw; height: 100vh; font-family: 'Segoe UI', sans-serif; background-color: #0c0c14; }
+        canvas { display: none; width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
+        #blocker { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0a0a14; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 30; color: #fff; text-align: center; }
+        #instructions { padding: 35px; border: 1px solid rgba(255,255,255,0.1); background: #111116; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.6); max-width: 500px; margin-bottom: 20px; }
         #instructions h2 { color: #ffffff; margin-top: 0; font-size: 24px; }
-        #instructions p { color: #a0a5b5; line-height: 1.6; font-size: 14px; }
-        
-        .char-selection { display: flex; gap: 30px; justify-content: center; z-index: 10000; margin-top: 20px; }
-        .btn-char { 
-            padding: 15px 45px; border: 2px solid rgba(255,255,255,0.2); border-radius: 16px; 
-            background: #1f1f2e; color: white; font-size: 22px; font-weight: bold; 
-            cursor: pointer; transition: all 0.2s ease;
-        }
+        .char-selection { display: flex; gap: 30px; justify-content: center; z-index: 35; }
+        .btn-char { padding: 15px 45px; border: 2px solid rgba(255,255,255,0.2); border-radius: 16px; background: #1f1f2e; color: white; font-size: 22px; font-weight: bold; cursor: pointer; transition: all 0.2s ease; }
         .btn-char:hover { border-color: #00ddff; transform: scale(1.1); box-shadow: 0 0 25px rgba(0, 221, 255, 0.5); }
-
-        /* 2D-Bild-Overlay */
         #photo-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(5, 5, 8, 0.96); z-index: 5000; justify-content: center; align-items: center; flex-direction: column; }
-        #room-photo { max-width: 80vw; max-height: 70vh; border-radius: 12px; box-shadow: 0 25px 60px rgba(0,0,0,0.9); border: 1px solid rgba(255,255,255,0.1); object-fit: contain; background: #111; }
-        #room-tag { color: #ffffff; font-size: 26px; font-weight: bold; margin-bottom: 15px; letter-spacing: 1px; text-transform: uppercase; }
-        #exit-btn { margin-top: 25px; padding: 14px 40px; font-size: 16px; font-weight: bold; color: white; background: #ff3b30; border: none; border-radius: 30px; cursor: pointer; box-shadow: 0 5px 15px rgba(255, 59, 48, 0.3); }
-        #exit-btn:hover { transform: scale(1.05); background: #ff453a; }
+        #room-photo { max-width: 80vw; max-height: 70vh; border-radius: 12px; box-shadow: 0 25px 60px rgba(0,0,0,0.9); object-fit: contain; background: #111; }
+        #room-tag { color: #ffffff; font-size: 26px; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; }
+        #exit-btn { margin-top: 25px; padding: 14px 40px; font-size: 16px; font-weight: bold; background: #ff3b30; color: white; border: none; border-radius: 30px; cursor: pointer; }
     </style>
     <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
 </head>
 <body>
-
     <div id="blocker">
         <div id="instructions">
             <h2>VIRTUELLE IMMOBILIE</h2>
-            <p>
-               Willkommen zur Besichtigung! Wähle deinen Charakter, um zu beginnen.<br><br>
-               Erkunde die Wohnung mit den <strong>Pfeiltasten (↑, ↓, ←, →)</strong>.<br>
-               Gehe auf eine Tür zu, um den Raum zu betreten.<br>
-               Nach dem Eintreten 2 Sek. warten. Verlassen per Pfeiltaste oder Klick.
-            </p>
+            <p style="color: #a0a5b5; line-height: 1.6; font-size: 14px;">Wähle einen Charakter. Steuerung danach über Pfeiltasten. Räume können per Pfeiltaste verlassen werden!</p>
             <div class="char-selection">
-                <button class="btn-char" onclick="chooseAvatar('frau')">FRAU</button>
-                <button class="btn-char" onclick="chooseAvatar('mann')">MANN</button>
+                <button class="btn-char" onclick="startGame('frau')">FRAU</button>
+                <button class="btn-char" onclick="startGame('mann')">MANN</button>
             </div>
         </div>
     </div>
-
     <canvas id="game-canvas"></canvas>
-
     <div id="photo-overlay">
         <div id="room-tag">RAUM</div>
         <img id="room-photo" src="" alt="Raumansicht">
-        <button id="exit-btn" onclick="leaveRoom()">← RAUM VERLASSEN (Oder Pfeiltaste drücken)</button>
+        <button id="exit-btn" onclick="leaveRoom()">← ZURÜCK</button>
     </div>
-
     <script>
-        let scene, camera, renderer, playerMesh;
-        let moveUp = false, moveDown = false, moveLeft = false, moveRight = false;
-        let audioCtx, stepInterval;
-        let musicFilters = []; // Jetzt als Array, um alle Soundkanäle sauber zu dämpfen
-        let insideRoom = null;
+        let scene, camera, renderer, playerMesh, audioCtx, stepInterval, loopInterval, musicNodes = [], gameStarted = false, insideRoom = null;
+        let keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
         let lastPlayerPos = new THREE.Vector3();
-        let gameStarted = false;
-        let canMove = true; 
-        let moveTimeout = null;
+        const rooms = [ { name: "BADEZIMMER", img: "bad.jpg", xMin: -100, xMax: -50, zMin: -60, zMax: -20 }, { name: "ZIMMER 1", img: "zimmer1.jpg", xMin: -100, xMax: -50, zMin: 40, zMax: 80 }, { name: "ZIMMER 2", img: "zimmer2.jpg", xMin: 50, xMax: 100, zMin: -60, zMax: -20 }, { name: "ZIMMER 3", img: "zimmer3.jpg", xMin: 50, xMax: 100, zMin: 40, zMax: 80 }, { name: "BALKON", img: "balkon.jpg", xMin: -40, xMax: 40, zMin: -150, zMax: -110 } ];
 
-        const rooms = [
-            { name: "BADEZIMMER", img: "bad.jpg", xMin: -100, xMax: -50, zMin: -60, zMax: -20 },
-            { name: "ZIMMER 1", img: "zimmer1.jpg", xMin: -100, xMax: -50, zMin: 40, zMax: 80 },
-            { name: "ZIMMER 2", img: "zimmer2.jpg", xMin: 50, xMax: 100, zMin: -60, zMax: -20 },
-            { name: "ZIMMER 3", img: "zimmer3.jpg", xMin: 50, xMax: 100, zMin: 40, zMax: 80 },
-            { name: "BALKON", img: "balkon.jpg", xMin: -40, xMax: 40, zMin: -150, zMax: -110 }
-        ];
-
-        function chooseAvatar(gender) {
+        function startGame(gender) {
             document.getElementById('blocker').style.display = 'none';
             document.getElementById('game-canvas').style.display = 'block';
-
             gameStarted = true;
-            init(gender);
-            initAudio();
+            initScene(gender);
             animate();
+            // Audio startet verzögert und separat, um Blockaden zu vermeiden
+            setTimeout(initAudio, 500);
         }
 
-        function init(gender) {
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0a0a10);
-
-            camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 1, 1000);
-            camera.position.set(0, 260, 150); 
-
-            scene.add(new THREE.AmbientLight(0xffffff, 0.65));
-            const mainLight = new THREE.DirectionalLight(0xfff5e6, 0.55);
-            mainLight.position.set(20, 200, 50);
-            scene.add(mainLight);
-
-            // Flurboden
-            const floorMat = new THREE.MeshStandardMaterial({ color: 0x3d2b1f, roughness: 0.35, metalness: 0.05 });
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 300), floorMat);
-            floor.rotation.x = -Math.PI / 2; floor.position.set(0, -40, 0); scene.add(floor);
-
-            // Zimmerböden
-            const roomMat1 = new THREE.MeshStandardMaterial({ color: 0x243344, roughness: 0.6 }); 
-            const roomMat2 = new THREE.MeshStandardMaterial({ color: 0x2d3a2d, roughness: 0.6 }); 
-            const tileMat = new THREE.MeshStandardMaterial({ color: 0x33333b, roughness: 0.3 }); 
-
-            createRoomFloor(tileMat, -75, -40, 50, 40);  
-            createRoomFloor(roomMat1, -75, 60, 50, 40);  
-            createRoomFloor(roomMat2, 75, -40, 50, 40);   
-            createRoomFloor(roomMat1, 75, 60, 50, 40);    
-            createRoomFloor(tileMat, 0, -135, 80, 40);   
-
-            buildWohnungsWaende();
-
-            // Spielfigur
-            playerMesh = new THREE.Group();
-            playerMesh.position.set(0, -40, 110); 
-            buildHumanAvatar(gender);
-            scene.add(playerMesh);
-
-            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('game-canvas'), antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-
-            // Tastatursteuerung
-            window.addEventListener('keydown', e => { 
-                if (!canMove && gameStarted) return;
-                if (e.code === 'ArrowUp') { moveUp = true; if(insideRoom) leaveRoom(); }
-                if (e.code === 'ArrowDown') { moveDown = true; if(insideRoom) leaveRoom(); }
-                if (e.code === 'ArrowLeft') { moveLeft = true; if(insideRoom) leaveRoom(); }
-                if (e.code === 'ArrowRight') { moveRight = true; if(insideRoom) leaveRoom(); }
-            });
-            window.addEventListener('keyup', e => { 
-                if (e.code === 'ArrowUp') moveUp = false;
-                if (e.code === 'ArrowDown') moveDown = false;
-                if (e.code === 'ArrowLeft') moveLeft = false;
-                if (e.code === 'ArrowRight') moveRight = false;
-            });
-            window.addEventListener('resize', onWindowResize);
+        function initScene(gender) {
+            scene = new THREE.Scene(); scene.background = new THREE.Color(0x0a0a10);
+            camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 1, 1000); camera.position.set(0, 260, 150);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+            const light = new THREE.DirectionalLight(0xffffff, 0.6); light.position.set(20, 200, 50); scene.add(light);
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x3d2b1f, roughness: 0.4 });
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 300), floorMat); floor.rotation.x = -Math.PI / 2; floor.position.y = -40; scene.add(floor);
+            createRoomFloors(); buildWalls(); buildPlayer(gender);
+            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('game-canvas'), antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight);
+            window.addEventListener('keydown', e => { if (keys.hasOwnProperty(e.key)) { keys[e.key] = true; if(insideRoom) leaveRoom(); } });
+            window.addEventListener('keyup', e => { if (keys.hasOwnProperty(e.key)) keys[e.key] = false; });
+            window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
         }
 
-        function createRoomFloor(material, x, z, w, h) {
-            const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), material);
-            mesh.rotation.x = -Math.PI / 2; mesh.position.set(x, -39.9, z); scene.add(mesh);
-        }
+        function createRoomFloors() { const roomMat1 = new THREE.MeshStandardMaterial({ color: 0x2d3a4d }), roomMat2 = new THREE.MeshStandardMaterial({ color: 0x3d4d3d }), tileMat = new THREE.MeshStandardMaterial({ color: 0x444444 }); createFloor(-75, -40, 50, 40, tileMat); createFloor(-75, 60, 50, 40, roomMat1); createFloor(75, -40, 50, 40, roomMat2); createFloor(75, 60, 50, 40, roomMat1); createFloor(0, -135, 80, 40, tileMat); }
+        function createFloor(x, z, w, h, mat) { const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat); mesh.rotation.x = -Math.PI / 2; mesh.position.set(x, -39.9, z); scene.add(mesh); }
+        function buildWalls() { const wallMat = new THREE.MeshStandardMaterial({ color: 0xefefef }); createWall(8, 50, 60, -50, -15, -120, wallMat); createWall(8, 50, 40, -50, -15, 0, wallMat); createWall(8, 50, 70, -50, -15, 115, wallMat); createWall(8, 50, 60, 50, -15, -120, wallMat); createWall(8, 50, 40, 50, -15, 0, wallMat); createWall(8, 50, 70, 50, -15, 115, wallMat); createWall(42, 50, 8, -29, -15, -150, wallMat); createWall(42, 50, 8, 29, -15, -150, wallMat); createSign(-36, -40, "BAD"); createSign(-36, 60, "ZIMMER 1"); createSign(36, -40, "ZIMMER 2"); createSign(36, 60, "ZIMMER 3"); createSign(0, -122, "BALKON"); }
+        function createWall(w, h, d, x, y, z, mat) { const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); mesh.position.set(x, y, z); scene.add(mesh); }
+        function createSign(x, z, text) { const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); canvas.width = 256; canvas.height = 64; ctx.fillStyle = 'rgba(20,20,30,0.85)'; ctx.fillRect(0,0,256,64); ctx.strokeStyle = '#00ddff'; ctx.lineWidth = 4; ctx.strokeRect(2,2,252,60); ctx.fillStyle = '#fff'; ctx.font = 'bold 22px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(text, 128, 41); const mesh = new THREE.Mesh(new THREE.PlaneGeometry(32, 8), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true })); mesh.position.set(x, -39.8, z); mesh.rotation.x = -Math.PI / 2; scene.add(mesh); }
+        function buildPlayer(gender) { playerMesh = new THREE.Group(); const pantsMat = new THREE.MeshStandardMaterial({ color: 0x1a2f4c }), skinMat = new THREE.MeshStandardMaterial({ color: 0xffdbac }), shirtMat = new THREE.MeshStandardMaterial({ color: (gender === 'frau') ? 0xcc4466 : 0x2277aa }), hairMat = new THREE.MeshStandardMaterial({ color: (gender === 'frau') ? 0xaa6633 : 0x332211 }); const legL = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.5, 12), pantsMat); legL.position.set(-2.2, 6, 0); const legR = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.5, 12), pantsMat); legR.position.set(2.2, 6, 0); const torso = new THREE.Mesh(new THREE.CylinderGeometry(4, 3.5, 14), shirtMat); torso.position.y = 19; const head = new THREE.Mesh(new THREE.SphereGeometry(4.2, 16, 16), skinMat); head.position.y = 29; const hair = new THREE.Mesh(new THREE.SphereGeometry(4.5, 16, 16), hairMat); hair.position.set(0, 29.6, -0.3); playerMesh.add(legL, legR, torso, head, hair); playerMesh.position.set(0, -40, 110); scene.add(playerMesh); }
 
-        function buildWohnungsWaende() {
-            const wallMat = new THREE.MeshStandardMaterial({ color: 0xe2e4e9, roughness: 0.7 });
+        function animate() { if (!gameStarted) return; requestAnimationFrame(animate); if (!insideRoom && playerMesh) { const speed = 2.2; let moved = false; if (keys.ArrowUp) { playerMesh.position.z -= speed; playerMesh.rotation.y = Math.PI; moved = true; } if (keys.ArrowDown) { playerMesh.position.z += speed; playerMesh.rotation.y = 0; moved = true; } if (keys.ArrowLeft) { playerMesh.position.x -= speed; playerMesh.rotation.y = -Math.PI / 2; moved = true; } if (keys.ArrowRight) { playerMesh.position.x += speed; playerMesh.rotation.y = Math.PI / 2; moved = true; } if (moved) { const time = Date.now() * 0.012; playerMesh.children[0].rotation.x = Math.sin(time) * 0.6; playerMesh.children[1].rotation.x = -Math.sin(time) * 0.6; } else { playerMesh.children[0].rotation.x = 0; playerMesh.children[1].rotation.x = 0; } playerMesh.position.x = Math.max(-44, Math.min(44, playerMesh.position.x)); playerMesh.position.z = Math.max(-145, Math.min(145, playerMesh.position.z)); camera.position.x = playerMesh.position.x; camera.position.z = playerMesh.position.z + 120; camera.lookAt(playerMesh.position.x, playerMesh.position.y + 10, playerMesh.position.z); checkCollisions(); } renderer.render(scene, camera); }
+        function checkCollisions() { const pos = playerMesh.position; for (let r of rooms) { if (pos.x >= r.xMin && pos.x <= r.xMax && pos.z >= r.zMin && pos.z <= r.zMax) { lastPlayerPos.copy(pos); insideRoom = r; document.getElementById('room-tag').innerText = r.name; document.getElementById('room-photo').src = r.img; document.getElementById('photo-overlay').style.display = 'flex'; keys.ArrowUp = keys.ArrowDown = keys.ArrowLeft = keys.ArrowRight = false; break; } } }
+        function leaveRoom() { document.getElementById('photo-overlay').style.display = 'none'; insideRoom = null; if (playerMesh) { playerMesh.position.copy(lastPlayerPos); if (playerMesh.position.x < 0) playerMesh.position.x += 16; else if (playerMesh.position.x > 0) playerMesh.position.x -= 16; else if (playerMesh.position.z < -100) playerMesh.position.z += 16; } }
 
-            createWall(8, 50, 60, -50, -15, -120, wallMat); 
-            createWall(8, 50, 40, -50, -15, 0, wallMat);   
-            createWall(8, 50, 70, -50, -15, 115, wallMat); 
-
-            createWall(8, 50, 60, 50, -15, -120, wallMat);  
-            createWall(8, 50, 40, 50, -15, 0, wallMat);    
-            createWall(8, 50, 70, 50, -15, 115, wallMat);  
-
-            createWall(42, 50, 8, -29, -15, -150, wallMat);
-            createWall(42, 50, 8, 29, -15, -150, wallMat);
-
-            // Dekorationselemente an den Flurwänden
-            createPlant(-40, -135);
-            createPlant(40, -135);
-            createPlant(-40, 20);
-            createPlant(40, 20);
-
-            createWallPicture(-45, 10, -80, 0x553311);
-            createWallPicture(45, 10, -80, 0x113355);
-
-            createFloorSign(-36, -40, "BADEZIMMER");
-            createFloorSign(-36, 60, "ZIMMER 1");
-            createFloorSign(36, -40, "ZIMMER 2");
-            createFloorSign(36, 60, "ZIMMER 3");
-            createFloorSign(0, -122, "BALKON");
-        }
-
-        function createWall(w, h, d, x, y, z, mat) {
-            const mesh = new THREE.Mesh(new THREE.BoxGeometry(w
+        function initAudio() { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); loopAudio(); stepInterval = setInterval(() => { if ((keys.ArrowUp || keys.ArrowDown || keys.ArrowLeft || keys.ArrowRight) && !insideRoom) playStep(); }, 360); }
+        function loopAudio() { if (!gameStarted) return; musicNodes.forEach(n => n.stop()); musicNodes = []; playTone(130.81, 0); playTone(164.81, 2000); playTone(196.00, 4000); loopInterval = setTimeout(loopAudio, 6000); }
+        function playTone(freq, delay) { setTimeout(() => { if (insideRoom || !gameStarted) return; const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.type = 'sine'; osc.frequency.setValueAtTime(freq, audioCtx.currentTime); gain.gain.setValueAtTime(0.04, audioCtx.currentTime); osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 4); musicNodes.push(osc); }, delay); }
+        function playStep() { const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.type = 'triangle'; osc.frequency.setValueAtTime(60 + Math.random() * 10, audioCtx.currentTime); gain.gain.setValueAtTime(0.3, audioCtx.currentTime); osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.1); }
+    </script>
+</body>
+</html>
