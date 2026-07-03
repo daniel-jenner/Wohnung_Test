@@ -71,7 +71,6 @@
         let lastPlayerPos = new THREE.Vector3();
         let gameStarted = false;
 
-        // Exakte Koordinaten-Zonen für die Räume auf der Karte
         const rooms = [
             { name: "BADEZIMMER", img: "bad.jpg", xMin: -100, xMax: -50, zMin: -60, zMax: -20 },
             { name: "ZIMMER 1", img: "zimmer1.jpg", xMin: -100, xMax: -50, zMin: 40, zMax: 80 },
@@ -95,38 +94,32 @@
             scene.background = new THREE.Color(0x0e0e16);
 
             camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000);
-            // KLARE POKÉMON-PERSPEKTIVE: Weit oben auf der Y-Achse, blickt steil nach unten
             camera.position.set(0, 240, 160); 
 
-            // Starke Beleuchtung von oben, damit die gesamte Karte hell erleuchtet ist
             scene.add(new THREE.AmbientLight(0xffffff, 0.7));
             const mainLight = new THREE.DirectionalLight(0xffffff, 0.6);
             mainLight.position.set(0, 200, 100);
             scene.add(mainLight);
 
-            // --- GRUNDRISS-WOHNUNG BAUEN ---
-            // Edler Holz-Zentralflur
+            // Böden
             const floorMat = new THREE.MeshStandardMaterial({ color: 0x543d2b, roughness: 0.4 });
             const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 300), floorMat);
             floor.rotation.x = -Math.PI / 2; floor.position.set(0, -40, 0); scene.add(floor);
 
-            // Die Zimmer-Böden (Farblich abgetrennt zur Orientierung)
-            const roomMat1 = new THREE.MeshStandardMaterial({ color: 0x2d3a4d }); // Blaues Zimmer
-            const roomMat2 = new THREE.MeshStandardMaterial({ color: 0x3d4d3d }); // Grünes Zimmer
-            const tileMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.2 }); // Bad-Fliesen
+            const roomMat1 = new THREE.MeshStandardMaterial({ color: 0x2d3a4d }); 
+            const roomMat2 = new THREE.MeshStandardMaterial({ color: 0x3d4d3d }); 
+            const tileMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.2 }); 
 
-            createRoomFloor(tileMat, -75, -40, 45, 40);  // Bad links oben
-            createRoomFloor(roomMat1, -75, 60, 45, 40);  // Zimmer 1 links unten
-            createRoomFloor(roomMat2, 75, -40, 45, 40);   // Zimmer 2 rechts oben
-            createRoomFloor(roomMat1, 75, 60, 45, 40);    // Zimmer 3 rechts unten
-            createRoomFloor(tileMat, 0, -130, 80, 40);   // Balkon hinten
+            createRoomFloor(tileMat, -75, -40, 45, 40);  
+            createRoomFloor(roomMat1, -75, 60, 45, 40);  
+            createRoomFloor(roomMat2, 75, -40, 45, 40);   
+            createRoomFloor(roomMat1, 75, 60, 45, 40);    
+            createRoomFloor(tileMat, 0, -130, 80, 40);   
 
-            // Wände hochziehen
             buildWohnungsWaende();
 
-            // Spielfiguren-Gruppe
             playerMesh = new THREE.Group();
-            playerMesh.position.set(0, -40, 110); // Startet unten im Flur
+            playerMesh.position.set(0, -40, 110); 
             buildHumanAvatar(gender);
             scene.add(playerMesh);
 
@@ -146,18 +139,15 @@
         function buildWohnungsWaende() {
             const wallMat = new THREE.MeshStandardMaterial({ color: 0xefefef, roughness: 0.8 });
             
-            // Hauptwände des Flurs (mit exakten Durchgängen für deine Räume)
-            createWall(10, 60, 16, -50, -10, -110, wallMat); // Balkonwand hinten
-            createWall(10, 60, 140, -50, -10, 40, wallMat);  // Flurwand links
+            createWall(10, 60, 16, -50, -10, -110, wallMat); 
+            createWall(10, 60, 140, -50, -10, 40, wallMat);  
 
-            // Raumtrennwände und Außenmauern
             createWall(6, 110, 8, 0, -11, -150, wallMat);
             createWall(100, 6, 8, -50, -11, -60, wallMat);
             createWall(100, 6, 8, 50, -11, -60, wallMat);
             createWall(100, 6, 8, -50, -11, 40, wallMat);
             createWall(100, 6, 8, 50, -11, 40, wallMat);
 
-            // Raum-Beschriftungsschilder
             createSign(-52, 10, -40, "BAD");
             createSign(-52, 10, 60, "ZIMMER 1");
             createSign(52, 10, -40, "ZIMMER 2");
@@ -186,24 +176,19 @@
         function buildHumanAvatar(gender) {
             const skinMat = new THREE.MeshStandardMaterial({ color: 0xffdbac });
             const pantsMat = new THREE.MeshStandardMaterial({ color: 0x1a2f4c });
-            const shoeMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
             const shirtMat = new THREE.MeshStandardMaterial({ color: (gender === 'frau') ? 0xcc4466 : 0x2277aa });
             const hairMat = new THREE.MeshStandardMaterial({ color: (gender === 'frau') ? 0xaa6633 : 0x332211 });
 
-            // Beine / Füße
             const legL = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.5, 12), pantsMat); legL.position.set(-2.2, 6, 0);
             const legR = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.5, 12), pantsMat); legR.position.set(2.2, 6, 0);
             playerMesh.add(legL, legR);
 
-            // Rumpf
             const torso = new THREE.Mesh(new THREE.CylinderGeometry(4, 3.5, 14), shirtMat); torso.position.y = 19;
             playerMesh.add(torso);
 
-            // Kopf
             const head = new THREE.Mesh(new THREE.SphereGeometry(4, 16, 16), skinMat); head.position.y = 29;
             playerMesh.add(head);
 
-            // Haare
             const hair = new THREE.Mesh(new THREE.SphereGeometry(4.2, 16, 16), hairMat); hair.position.set(0, 29.5, -0.3);
             playerMesh.add(hair);
         }
@@ -246,7 +231,6 @@
             
             if (playerMesh) {
                 playerMesh.position.copy(lastPlayerPos);
-                // Schiebe Figur zurück in den Flur
                 if (playerMesh.position.x < 0) playerMesh.position.x += 16;
                 if (playerMesh.position.x > 0) playerMesh.position.x -= 16;
                 if (playerMesh.position.z < -100) playerMesh.position.z += 16;
@@ -279,11 +263,9 @@
                     playerMesh.children[1].rotation.x = -Math.sin(time) * 0.5; 
                 }
 
-                // Grenzen des Flurs/Wohnung einhalten
                 playerMesh.position.x = Math.max(-95, Math.min(95, playerMesh.position.x));
                 playerMesh.position.z = Math.max(-145, Math.min(145, playerMesh.position.z));
 
-                // Kamera folgt dem Spieler aus der Pokémon-Vogelperspektive
                 camera.position.x = playerMesh.position.x;
                 camera.position.z = playerMesh.position.z + 140;
 
