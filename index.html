@@ -46,7 +46,8 @@
             <h2>VIRTUELLE IMMOBILIE (VOGELPERSPEKTIVE)</h2>
             <p style="color: #a0a5b5; line-height: 1.6; font-size: 14px;">
                Wähle deinen Charakter. Steuerung im Spiel wie bei Pokémon über die 
-               <strong>Pfeiltasten (↑, ↓, ←, →)</strong> deiner Tastatur.
+               <strong>Pfeiltasten (↑, ↓, ←, →)</strong> deiner Tastatur.<br>
+               Räume können auch direkt über die Pfeiltasten wieder verlassen werden!
             </p>
             <div class="char-selection">
                 <button class="btn-char" onclick="chooseAvatar('frau')">FRAU</button>
@@ -60,13 +61,13 @@
     <div id="photo-overlay">
         <div id="room-tag">RAUM</div>
         <img id="room-photo" src="" alt="Raumansicht">
-        <button id="exit-btn" onclick="leaveRoom()">← RAUM VERLASSEN</button>
+        <button id="exit-btn" onclick="leaveRoom()">← RAUM VERLASSEN (Oder Pfeiltaste drücken)</button>
     </div>
 
     <script>
         let scene, camera, renderer, playerMesh;
         let keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
-        let audioCtx, doors = [];
+        let audioCtx, musicFilter, stepInterval;
         let insideRoom = null;
         let lastPlayerPos = new THREE.Vector3();
         let gameStarted = false;
@@ -91,33 +92,36 @@
 
         function init(gender) {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0e0e16);
+            scene.background = new THREE.Color(0x0a0a10);
 
-            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000);
-            camera.position.set(0, 240, 160); 
+            camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 1, 1000);
+            camera.position.set(0, 260, 150); 
 
-            scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-            const mainLight = new THREE.DirectionalLight(0xffffff, 0.6);
-            mainLight.position.set(0, 200, 100);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+            const mainLight = new THREE.DirectionalLight(0xfff5e6, 0.55);
+            mainLight.position.set(20, 200, 50);
             scene.add(mainLight);
 
-            // Böden
-            const floorMat = new THREE.MeshStandardMaterial({ color: 0x543d2b, roughness: 0.4 });
+            // --- REALISTISCHERER FLUR-BODEN & DETAILS ---
+            // Edler, dunkler Parkettboden für den Flur
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x3d2b1f, roughness: 0.35, metalness: 0.05 });
             const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 300), floorMat);
             floor.rotation.x = -Math.PI / 2; floor.position.set(0, -40, 0); scene.add(floor);
 
-            const roomMat1 = new THREE.MeshStandardMaterial({ color: 0x2d3a4d }); 
-            const roomMat2 = new THREE.MeshStandardMaterial({ color: 0x3d4d3d }); 
-            const tileMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.2 }); 
+            // Teppiche/Böden der angrenzenden Zimmer
+            const roomMat1 = new THREE.MeshStandardMaterial({ color: 0x243344, roughness: 0.6 }); 
+            const roomMat2 = new THREE.MeshStandardMaterial({ color: 0x2d3a2d, roughness: 0.6 }); 
+            const tileMat = new THREE.MeshStandardMaterial({ color: 0x33333b, roughness: 0.3 }); 
 
-            createRoomFloor(tileMat, -75, -40, 45, 40);  
-            createRoomFloor(roomMat1, -75, 60, 45, 40);  
-            createRoomFloor(roomMat2, 75, -40, 45, 40);   
-            createRoomFloor(roomMat1, 75, 60, 45, 40);    
-            createRoomFloor(tileMat, 0, -130, 80, 40);   
+            createRoomFloor(tileMat, -75, -40, 50, 40);  
+            createRoomFloor(roomMat1, -75, 60, 50, 40);  
+            createRoomFloor(roomMat2, 75, -40, 50, 40);   
+            createRoomFloor(roomMat1, 75, 60, 50, 40);    
+            createRoomFloor(tileMat, 0, -135, 80, 40);   
 
             buildWohnungsWaende();
 
+            // Spielfigur initialisieren
             playerMesh = new THREE.Group();
             playerMesh.position.set(0, -40, 110); 
             buildHumanAvatar(gender);
@@ -126,7 +130,13 @@
             renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('game-canvas'), antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
 
-            window.addEventListener('keydown', e => { if(keys.hasOwnProperty(e.key)) keys[e.key] = true; });
+            // TASTATUR EVENTS (Erweitert um Raum-Verlassen Logik)
+            window.addEventListener('keydown', e => { 
+                if(keys.hasOwnProperty(e.key)) {
+                    keys[e.key] = true;
+                    if (insideRoom) leaveRoom(); // Jede Pfeiltaste holt dich sofort zurück!
+                }
+            });
             window.addEventListener('keyup', e => { if(keys.hasOwnProperty(e.key)) keys[e.key] = false; });
             window.addEventListener('resize', onWindowResize);
         }
@@ -137,22 +147,28 @@
         }
 
         function buildWohnungsWaende() {
-            const wallMat = new THREE.MeshStandardMaterial({ color: 0xefefef, roughness: 0.8 });
-            
-            createWall(10, 60, 16, -50, -10, -110, wallMat); 
-            createWall(10, 60, 140, -50, -10, 40, wallMat);  
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0xe2e4e9, roughness: 0.7 });
+            const trimMat = new THREE.MeshStandardMaterial({ color: 0x1f1f2e }); // Fußleisten-Look
 
-            createWall(6, 110, 8, 0, -11, -150, wallMat);
-            createWall(100, 6, 8, -50, -11, -60, wallMat);
-            createWall(100, 6, 8, 50, -11, -60, wallMat);
-            createWall(100, 6, 8, -50, -11, 40, wallMat);
-            createWall(100, 6, 8, 50, -11, 40, wallMat);
+            // Flurwände links & rechts mit echten Lücken (Türen) für Realismus
+            createWall(8, 50, 60, -50, -15, -120, wallMat); 
+            createWall(8, 50, 40, -50, -15, 0, wallMat);   
+            createWall(8, 50, 70, -50, -15, 115, wallMat); 
 
-            createSign(-52, 10, -40, "BAD");
-            createSign(-52, 10, 60, "ZIMMER 1");
-            createSign(52, 10, -40, "ZIMMER 2");
-            createSign(52, 10, 60, "ZIMMER 3");
-            createSign(0, 10, -125, "BALKON");
+            createWall(8, 50, 60, 50, -15, -120, wallMat);  
+            createWall(8, 50, 40, 50, -15, 0, wallMat);    
+            createWall(8, 50, 70, 50, -15, 115, wallMat);  
+
+            // Querwände hinten am Balkon
+            createWall(42, 50, 8, -29, -15, -150, wallMat);
+            createWall(42, 50, 8, 29, -15, -150, wallMat);
+
+            // --- PERFEKT LESBARE BESCHRIFTUNG (AUF DEM BODEN) ---
+            createFloorSign(-36, -40, "BADEZIMMER");
+            createFloorSign(-36, 60, "ZIMMER 1");
+            createFloorSign(36, -40, "ZIMMER 2");
+            createFloorSign(36, 60, "ZIMMER 3");
+            createFloorSign(0, -122, "BALKON");
         }
 
         function createWall(w, h, d, x, y, z, mat) {
@@ -160,24 +176,25 @@
             mesh.position.set(x, y, z); scene.add(mesh);
         }
 
-        function createSign(x, y, z, text) {
+        // Zeichnet lesbare Namensschilder flach auf den Boden vor die Räume
+        function createFloorSign(x, z, text) {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d'); canvas.width = 256; canvas.height = 64;
-            ctx.fillStyle = '#111116'; ctx.fillRect(0,0,256,64);
-            ctx.strokeStyle = '#00ddff'; ctx.lineWidth = 3; ctx.strokeRect(2,2,252,60);
-            ctx.fillStyle = '#ffffff'; ctx.font = 'bold 22px sans-serif'; ctx.textAlign='center'; ctx.fillText(text, 128, 42);
+            ctx.fillStyle = 'rgba(20, 20, 30, 0.85)'; ctx.fillRect(0,0,256,64);
+            ctx.strokeStyle = '#00ddff'; ctx.lineWidth = 4; ctx.strokeRect(2,2,252,60);
+            ctx.fillStyle = '#ffffff'; ctx.font = 'bold 22px sans-serif'; ctx.textAlign='center'; ctx.fillText(text, 128, 41);
 
-            const labelMesh = new THREE.Mesh(new THREE.PlaneGeometry(24, 6), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(canvas) }));
-            labelMesh.position.set(x + (x < 0 ? 2 : (x > 0 ? -2 : 0)), y + 10, z);
-            if(x !== 0) labelMesh.rotation.y = x > 0 ? -Math.PI/2 : Math.PI/2;
+            const labelMesh = new THREE.Mesh(new THREE.PlaneGeometry(32, 8), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true }));
+            labelMesh.position.set(x, -39.8, z);
+            labelMesh.rotation.x = -Math.PI / 2; // Flach hinlegen!
             scene.add(labelMesh);
         }
 
         function buildHumanAvatar(gender) {
             const skinMat = new THREE.MeshStandardMaterial({ color: 0xffdbac });
-            const pantsMat = new THREE.MeshStandardMaterial({ color: 0x1a2f4c });
-            const shirtMat = new THREE.MeshStandardMaterial({ color: (gender === 'frau') ? 0xcc4466 : 0x2277aa });
-            const hairMat = new THREE.MeshStandardMaterial({ color: (gender === 'frau') ? 0xaa6633 : 0x332211 });
+            const pantsMat = new THREE.MeshStandardMaterial({ color: 0x16253b });
+            const shirtMat = new THREE.MeshStandardMaterial({ color: (gender === 'frau') ? 0xdd4466 : 0x1177bb, roughness: 0.5 });
+            const hairMat = new THREE.MeshStandardMaterial({ color: (gender === 'frau') ? 0x995522 : 0x221105 });
 
             const legL = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.5, 12), pantsMat); legL.position.set(-2.2, 6, 0);
             const legR = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.5, 12), pantsMat); legR.position.set(2.2, 6, 0);
@@ -186,25 +203,58 @@
             const torso = new THREE.Mesh(new THREE.CylinderGeometry(4, 3.5, 14), shirtMat); torso.position.y = 19;
             playerMesh.add(torso);
 
-            const head = new THREE.Mesh(new THREE.SphereGeometry(4, 16, 16), skinMat); head.position.y = 29;
+            const head = new THREE.Mesh(new THREE.SphereGeometry(4.2, 16, 16), skinMat); head.position.y = 29;
             playerMesh.add(head);
 
-            const hair = new THREE.Mesh(new THREE.SphereGeometry(4.2, 16, 16), hairMat); hair.position.set(0, 29.5, -0.3);
+            const hair = new THREE.Mesh(new THREE.SphereGeometry(4.5, 16, 16), hairMat); hair.position.set(0, 29.6, -0.3);
             playerMesh.add(hair);
         }
 
+        // --- DEEP STIMMUNGSVOLLES AUDIO SYSTEM ---
         function initAudio() {
             if (audioCtx) return;
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const notes = [261.63, 293.66, 329.63, 392.00];
-            setInterval(() => {
-                if (insideRoom) return;
-                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-                osc.type = 'sine'; osc.frequency.setValueAtTime(notes[Math.floor(Math.random() * notes.length)] / 2, audioCtx.currentTime);
-                gain.gain.setValueAtTime(0.04, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 4);
-                osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(); osc.stop(audioCtx.currentTime + 4.1);
-            }, 4000);
+            
+            // Kontinuierlicher, tiefer Ambient-Pad Sound
+            const bufferSize = audioCtx.sampleRate * 4; 
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) { data[i] = Math.random() * 2 - 1; }
+
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer; noise.loop = true;
+
+            musicFilter = audioCtx.createBiquadFilter();
+            musicFilter.type = 'lowpass'; musicFilter.frequency.value = 160; // Sehr deep und warm
+
+            const gainNode = audioCtx.createGain();
+            gainNode.gain.value = 0.12; 
+
+            noise.connect(musicFilter); musicFilter.connect(gainNode); gainNode.connect(audioCtx.destination);
+            noise.start();
+
+            // Intervall für rhythmische Schritte bei Bewegung
+            stepInterval = setInterval(() => {
+                let anyKeyDown = keys.ArrowUp || keys.ArrowDown || keys.ArrowLeft || keys.ArrowRight;
+                if (anyKeyDown && !insideRoom && gameStarted) {
+                    playFootstepSound();
+                }
+            }, 320);
+        }
+
+        function playFootstepSound() {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(65 + Math.random() * 15, audioCtx.currentTime); // Dumpfer Schritt-Sound
+            
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+            
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.13);
         }
 
         function checkPlayerPosition() {
@@ -216,6 +266,8 @@
                 if (pos.x >= r.xMin && pos.x <= r.xMax && pos.z >= r.zMin && pos.z <= r.zMax) {
                     lastPlayerPos.copy(playerMesh.position);
                     insideRoom = r;
+                    
+                    if(musicFilter) musicFilter.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.5); // Musik dämpfen
                     
                     document.getElementById('room-tag').innerText = r.name;
                     document.getElementById('room-photo').src = r.img;
@@ -229,8 +281,11 @@
             document.getElementById('photo-overlay').style.display = 'none';
             insideRoom = null;
             
+            if(musicFilter) musicFilter.frequency.exponentialRampToValueAtTime(160, audioCtx.currentTime + 0.4); // Musik wieder normal
+            
             if (playerMesh) {
                 playerMesh.position.copy(lastPlayerPos);
+                // Spielfigur sanft zurück in den Flur schieben
                 if (playerMesh.position.x < 0) playerMesh.position.x += 16;
                 if (playerMesh.position.x > 0) playerMesh.position.x -= 16;
                 if (playerMesh.position.z < -100) playerMesh.position.z += 16;
@@ -249,7 +304,7 @@
             requestAnimationFrame(animate);
 
             if (!insideRoom && playerMesh) {
-                const speed = 2.0;
+                const speed = 2.2;
                 let moved = false;
                 
                 if (keys.ArrowUp) { playerMesh.position.z -= speed; playerMesh.rotation.y = Math.PI; moved = true; }
@@ -257,18 +312,23 @@
                 if (keys.ArrowLeft) { playerMesh.position.x -= speed; playerMesh.rotation.y = -Math.PI / 2; moved = true; }
                 if (keys.ArrowRight) { playerMesh.position.x += speed; playerMesh.rotation.y = Math.PI / 2; moved = true; }
 
+                // Beinsimulation beim Laufen
                 if (moved && playerMesh.children.length >= 2) {
-                    const time = Date.now() * 0.01;
-                    playerMesh.children[0].rotation.x = Math.sin(time) * 0.5; 
-                    playerMesh.children[1].rotation.x = -Math.sin(time) * 0.5; 
+                    const time = Date.now() * 0.012;
+                    playerMesh.children[0].rotation.x = Math.sin(time) * 0.6; 
+                    playerMesh.children[1].rotation.x = -Math.sin(time) * 0.6; 
+                } else if (playerMesh.children.length >= 2) {
+                    playerMesh.children[0].rotation.x = 0;
+                    playerMesh.children[1].rotation.x = 0;
                 }
 
-                playerMesh.position.x = Math.max(-95, Math.min(95, playerMesh.position.x));
+                // Grenzen des begehbaren Bereichs
+                playerMesh.position.x = Math.max(-44, Math.min(44, playerMesh.position.x));
                 playerMesh.position.z = Math.max(-145, Math.min(145, playerMesh.position.z));
 
+                // Pokémon-Kameraführung
                 camera.position.x = playerMesh.position.x;
-                camera.position.z = playerMesh.position.z + 140;
-
+                camera.position.z = playerMesh.position.z + 120;
                 camera.lookAt(playerMesh.position.x, playerMesh.position.y + 10, playerMesh.position.z);
 
                 checkPlayerPosition();
