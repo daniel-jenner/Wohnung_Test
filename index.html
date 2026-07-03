@@ -5,29 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D Immobilien Simulator</title>
     <style>
-        body, html { margin: 0; padding: 0; overflow: hidden; width: 100vw; height: 100vh; font-family: 'Segoe UI', sans-serif; background-color: #05050a; }
+        body, html { margin: 0; padding: 0; overflow: hidden; width: 100vw; height: 100vh; font-family: 'Segoe UI', sans-serif; background-color: #0c0c14; }
         
-        /* Das 3D Spielfeld ist am Anfang unsichtbar, damit es nichts blockiert */
         #game-canvas { display: none; width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
 
-        /* Start-Bildschirm im absoluten Vordergrund */
+        /* Start-Bildschirm & Charakterauswahl */
         #blocker { 
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; 
             background: #0a0a14; display: flex; flex-direction: column; 
             justify-content: center; align-items: center; z-index: 9999; color: #fff; text-align: center; 
         }
         #instructions { 
             padding: 35px; border: 1px solid rgba(255,255,255,0.1); 
             background: #111116; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); 
-            max-width: 500px; backdrop-filter: blur(10px); 
+            max-width: 500px; margin-bottom: 20px;
         }
-        #instructions h2 { color: #ffffff; margin-top: 0; font-size: 24px; letter-spacing: 0.5px; }
+        #instructions h2 { color: #ffffff; margin-top: 0; font-size: 24px; }
         
-        .char-selection { display: flex; gap: 30px; justify-content: center; margin-top: 25px; }
+        .char-selection { display: flex; gap: 30px; justify-content: center; z-index: 10000; }
         .btn-char { 
             padding: 15px 45px; border: 2px solid rgba(255,255,255,0.2); border-radius: 16px; 
             background: #1f1f2e; color: white; font-size: 22px; font-weight: bold; 
-            cursor: pointer; transition: all 0.2s ease; line-height: 1; 
+            cursor: pointer; transition: all 0.2s ease;
         }
         .btn-char:hover { border-color: #00ddff; transform: scale(1.1); box-shadow: 0 0 25px rgba(0, 221, 255, 0.5); }
 
@@ -35,7 +34,7 @@
         #photo-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(5, 5, 8, 0.96); z-index: 5000; justify-content: center; align-items: center; flex-direction: column; }
         #room-photo { max-width: 80vw; max-height: 70vh; border-radius: 12px; box-shadow: 0 25px 60px rgba(0,0,0,0.9); border: 1px solid rgba(255,255,255,0.1); object-fit: contain; background: #111; }
         #room-tag { color: #ffffff; font-size: 26px; font-weight: bold; margin-bottom: 15px; letter-spacing: 1px; text-transform: uppercase; }
-        #exit-btn { margin-top: 25px; padding: 14px 40px; font-size: 16px; font-weight: bold; color: white; background: #ff3b30; border: none; border-radius: 30px; cursor: pointer; box-shadow: 0 5px 15px rgba(255, 59, 48, 0.3); transition: transform 0.2s; }
+        #exit-btn { margin-top: 25px; padding: 14px 40px; font-size: 16px; font-weight: bold; color: white; background: #ff3b30; border: none; border-radius: 30px; cursor: pointer; box-shadow: 0 5px 15px rgba(255, 59, 48, 0.3); }
         #exit-btn:hover { transform: scale(1.05); background: #ff453a; }
     </style>
     <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
@@ -44,10 +43,10 @@
 
     <div id="blocker">
         <div id="instructions">
-            <h2>VIRTUELLE EXKLUSIV-WOHNUNG</h2>
+            <h2>VIRTUELLE IMMOBILIE (VOGELPERSPEKTIVE)</h2>
             <p style="color: #a0a5b5; line-height: 1.6; font-size: 14px;">
-               Bitte wähle deinen Avatar aus, um den Rundgang zu starten.<br>
-               Steuerung danach über die <strong>Pfeiltasten (↑, ↓, ←, →)</strong> der Tastatur.
+               Wähle deinen Charakter. Steuerung im Spiel wie bei Pokémon über die 
+               <strong>Pfeiltasten (↑, ↓, ←, →)</strong> deiner Tastatur.
             </p>
             <div class="char-selection">
                 <button class="btn-char" onclick="chooseAvatar('frau')">FRAU</button>
@@ -72,169 +71,159 @@
         let lastPlayerPos = new THREE.Vector3();
         let gameStarted = false;
 
+        // Exakte Koordinaten-Zonen für die Räume auf der Karte
         const rooms = [
-            { name: "BADEZIMMER", img: "bad.jpg", xMin: -150, xMax: -100, zMin: -60, zMax: -20 },
-            { name: "ZIMMER 1", img: "zimmer1.jpg", xMin: -150, xMax: -100, zMin: 40, zMax: 80 },
-            { name: "ZIMMER 2", img: "zimmer2.jpg", xMin: 100, xMax: 150, zMin: -60, zMax: -20 },
-            { name: "ZIMMER 3", img: "zimmer3.jpg", xMin: 100, xMax: 150, zMin: 40, zMax: 80 },
+            { name: "BADEZIMMER", img: "bad.jpg", xMin: -100, xMax: -50, zMin: -60, zMax: -20 },
+            { name: "ZIMMER 1", img: "zimmer1.jpg", xMin: -100, xMax: -50, zMin: 40, zMax: 80 },
+            { name: "ZIMMER 2", img: "zimmer2.jpg", xMin: 50, xMax: 100, zMin: -60, zMax: -20 },
+            { name: "ZIMMER 3", img: "zimmer3.jpg", xMin: 50, xMax: 100, zMin: 40, zMax: 80 },
             { name: "BALKON", img: "balkon.jpg", xMin: -40, xMax: 40, zMin: -150, zMax: -110 }
         ];
 
-        // 1. DIESE FUNKTION WIRD JETZT GARANTIERT BEIM KLICK AUSGEFÜHRT
         function chooseAvatar(gender) {
-            // Blocker entfernen
             document.getElementById('blocker').style.display = 'none';
-            
-            // 3D Canvas sichtbar machen
-            const canvas = document.getElementById('game-canvas');
-            canvas.style.display = 'block';
+            document.getElementById('game-canvas').style.display = 'block';
 
-            // Erst JETZT startet die 3D Engine im Hintergrund
+            gameStarted = true;
             init(gender);
             initAudio();
-            gameStarted = true;
             animate();
         }
 
         function init(gender) {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0a0a0f);
+            scene.background = new THREE.Color(0x0e0e16);
 
-            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 1000);
-            camera.position.set(0, 140, 200); 
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000);
+            // KLARE POKÉMON-PERSPEKTIVE: Weit oben auf der Y-Achse, blickt steil nach unten
+            camera.position.set(0, 240, 160); 
 
-            scene.add(new THREE.AmbientLight(0xfff6e0, 0.6));
-            const spot1 = new THREE.PointLight(0xffffff, 0.7, 400); spot1.position.set(0, 100, -50); scene.add(spot1);
-            const spot2 = new THREE.PointLight(0xffffff, 0.5, 400); spot2.position.set(0, 100, 50); scene.add(spot2);
+            // Starke Beleuchtung von oben, damit die gesamte Karte hell erleuchtet ist
+            scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+            const mainLight = new THREE.DirectionalLight(0xffffff, 0.6);
+            mainLight.position.set(0, 200, 100);
+            scene.add(mainLight);
 
-            const floorMat = new THREE.MeshStandardMaterial({ color: 0x4a3525, roughness: 0.3, metalness: 0.1 });
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 300), floorMat);
-            floor.rotation.x = -Math.PI / 2; floor.position.y = -40; scene.add(floor);
+            // --- GRUNDRISS-WOHNUNG BAUEN ---
+            // Edler Holz-Zentralflur
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x543d2b, roughness: 0.4 });
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 300), floorMat);
+            floor.rotation.x = -Math.PI / 2; floor.position.set(0, -40, 0); scene.add(floor);
 
-            const wallMat = new THREE.MeshStandardMaterial({ color: 0xefefef, roughness: 0.8 });
-            const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(300, 100), wallMat); leftWall.position.set(-100, 10, 0); leftWall.rotation.y = Math.PI/2; scene.add(leftWall);
-            const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(300, 100), wallMat); rightWall.position.set(100, 10, 0); rightWall.rotation.y = -Math.PI/2; scene.add(rightWall);
-            const backWall = new THREE.Mesh(new THREE.PlaneGeometry(200, 100), wallMat); backWall.position.set(0, 10, -150); scene.add(backWall);
+            // Die Zimmer-Böden (Farblich abgetrennt zur Orientierung)
+            const roomMat1 = new THREE.MeshStandardMaterial({ color: 0x2d3a4d }); // Blaues Zimmer
+            const roomMat2 = new THREE.MeshStandardMaterial({ color: 0x3d4d3d }); // Grünes Zimmer
+            const tileMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.2 }); // Bad-Fliesen
 
-            buildDoorsAndSigns();
+            createRoomFloor(tileMat, -75, -40, 45, 40);  // Bad links oben
+            createRoomFloor(roomMat1, -75, 60, 45, 40);  // Zimmer 1 links unten
+            createRoomFloor(roomMat2, 75, -40, 45, 40);   // Zimmer 2 rechts oben
+            createRoomFloor(roomMat1, 75, 60, 45, 40);    // Zimmer 3 rechts unten
+            createRoomFloor(tileMat, 0, -130, 80, 40);   // Balkon hinten
 
+            // Wände hochziehen
+            buildWohnungsWaende();
+
+            // Spielfiguren-Gruppe
             playerMesh = new THREE.Group();
-            playerMesh.position.set(0, -40, 110);
-            scene.add(playerMesh);
-
-            // Avatar basierend auf Auswahl bauen
+            playerMesh.position.set(0, -40, 110); // Startet unten im Flur
             buildHumanAvatar(gender);
+            scene.add(playerMesh);
 
             renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('game-canvas'), antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.toneMapping = THREE.ACESFilmicToneMapping;
 
             window.addEventListener('keydown', e => { if(keys.hasOwnProperty(e.key)) keys[e.key] = true; });
             window.addEventListener('keyup', e => { if(keys.hasOwnProperty(e.key)) keys[e.key] = false; });
             window.addEventListener('resize', onWindowResize);
         }
 
-        function buildHumanAvatar(gender) {
-            const skinMat = new THREE.MeshStandardMaterial({ color: 0xffdbac, roughness: 0.6 });
-            const pantsMat = new THREE.MeshStandardMaterial({ color: 0x1a2f4c, roughness: 0.7 });
-            const shoeMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 });
-            
-            const shirtColor = (gender === 'frau') ? 0xcc4466 : 0x2277aa;
-            const hairColor = (gender === 'frau') ? 0xaa6633 : 0x332211;
-            
-            const shirtMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.6 });
-            const hairMat = new THREE.MeshStandardMaterial({ color: hairColor, roughness: 0.8 });
-
-            const legL = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.5, 12, 12), pantsMat); legL.position.set(-2.5, 6, 0);
-            const legR = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.5, 12, 12), pantsMat); legR.position.set(2.5, 6, 0);
-            const shoeL = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.5, 4), shoeMat); shoeL.position.set(-2.5, 0.75, 1);
-            const shoeR = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.5, 4), shoeMat); shoeR.position.set(2.5, 0.75, 1);
-            playerMesh.add(legL, legR, shoeL, shoeR);
-
-            const torso = new THREE.Mesh(new THREE.CylinderGeometry(4, 3.5, 14, 16), shirtMat); torso.position.y = 19;
-            playerMesh.add(torso);
-
-            const neck = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 2, 12), skinMat); neck.position.y = 26;
-            const head = new THREE.Mesh(new THREE.SphereGeometry(3.8, 16, 16), skinMat); head.position.y = 30;
-            playerMesh.add(neck, head);
-
-            if (gender === 'frau') {
-                const hairTop = new THREE.Mesh(new THREE.SphereGeometry(4, 16, 16), hairMat); hairTop.position.set(0, 31, -0.5);
-                const hairBack = new THREE.Mesh(new THREE.BoxGeometry(7.8, 8, 3), hairMat); hairBack.position.set(0, 28, -2.5);
-                playerMesh.add(hairTop, hairBack);
-            } else {
-                const hairTop = new THREE.Mesh(new THREE.SphereGeometry(4, 16, 8), hairMat); hairTop.position.set(0, 31.2, 0);
-                playerMesh.add(hairTop);
-            }
-
-            const armL = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1, 11, 12), shirtMat); armL.position.set(-5.5, 18, 0); armL.rotation.z = 0.05;
-            const armR = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1, 11, 12), shirtMat); armR.position.set(5.5, 18, 0); armR.rotation.z = -0.05;
-            playerMesh.add(armL, armR);
+        function createRoomFloor(material, x, z, w, h) {
+            const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), material);
+            mesh.rotation.x = -Math.PI / 2; mesh.position.set(x, -39.9, z); scene.add(mesh);
         }
 
-        function buildDoorsAndSigns() {
-            const doorGeo = new THREE.BoxGeometry(4, 70, 35);
-            const doorMat = new THREE.MeshStandardMaterial({ color: 0x2d1f18, roughness: 0.6 });
+        function buildWohnungsWaende() {
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0xefefef, roughness: 0.8 });
+            
+            // Hauptwände des Flurs (mit exakten Durchgängen für deine Räume)
+            createWall(10, 60, 16, -50, -10, -110, wallMat); // Balkonwand hinten
+            createWall(10, 60, 140, -50, -10, 40, wallMat);  // Flurwand links
 
-            const doorPositions = [
-                { x: -98, y: -5, z: -40, ry: 0, label: "BADEZIMMER" },
-                { x: -98, y: -5, z: 60,  ry: 0, label: "ZIMMER 1" },
-                { x: 98,  y: -5, z: -40, ry: 0, label: "ZIMMER 2" },
-                { x: 98,  y: -5, z: 60,  ry: 0, label: "ZIMMER 3" },
-                { x: 0,   y: -2, z: -148, ry: Math.PI/2, label: "BALKON" }
-            ];
+            // Raumtrennwände und Außenmauern
+            createWall(6, 110, 8, 0, -11, -150, wallMat);
+            createWall(100, 6, 8, -50, -11, -60, wallMat);
+            createWall(100, 6, 8, 50, -11, -60, wallMat);
+            createWall(100, 6, 8, -50, -11, 40, wallMat);
+            createWall(100, 6, 8, 50, -11, 40, wallMat);
 
-            doorPositions.forEach(pos => {
-                const door = new THREE.Mesh(doorGeo, doorMat);
-                door.position.set(pos.x, pos.y, pos.z);
-                door.rotation.y = pos.ry;
-                scene.add(door);
+            // Raum-Beschriftungsschilder
+            createSign(-52, 10, -40, "BAD");
+            createSign(-52, 10, 60, "ZIMMER 1");
+            createSign(52, 10, -40, "ZIMMER 2");
+            createSign(52, 10, 60, "ZIMMER 3");
+            createSign(0, 10, -125, "BALKON");
+        }
 
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d'); canvas.width = 256; canvas.height = 64;
-                ctx.fillStyle = '#111116'; ctx.fillRect(0,0,256,64);
-                ctx.strokeStyle = '#00ddff'; ctx.lineWidth = 3; ctx.strokeRect(2,2,252,60);
-                ctx.fillStyle = '#ffffff'; ctx.font = 'bold 20px sans-serif'; ctx.textAlign='center'; ctx.fillText(pos.label, 128, 40);
+        function createWall(w, h, d, x, y, z, mat) {
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+            mesh.position.set(x, y, z); scene.add(mesh);
+        }
 
-                const labelMesh = new THREE.Mesh(new THREE.PlaneGeometry(30, 7.5), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(canvas) }));
-                labelMesh.position.set(pos.x + (pos.x < 0 ? 2 : (pos.x > 0 ? -2 : 0)), 45, pos.z + (pos.z === -148 ? 2 : 0));
-                if(pos.x !== 0) labelMesh.rotation.y = pos.x > 0 ? -Math.PI/2 : Math.PI/2;
-                scene.add(labelMesh);
-            });
+        function createSign(x, y, z, text) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d'); canvas.width = 256; canvas.height = 64;
+            ctx.fillStyle = '#111116'; ctx.fillRect(0,0,256,64);
+            ctx.strokeStyle = '#00ddff'; ctx.lineWidth = 3; ctx.strokeRect(2,2,252,60);
+            ctx.fillStyle = '#ffffff'; ctx.font = 'bold 22px sans-serif'; ctx.textAlign='center'; ctx.fillText(text, 128, 42);
+
+            const labelMesh = new THREE.Mesh(new THREE.PlaneGeometry(24, 6), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(canvas) }));
+            labelMesh.position.set(x + (x < 0 ? 2 : (x > 0 ? -2 : 0)), y + 10, z);
+            if(x !== 0) labelMesh.rotation.y = x > 0 ? -Math.PI/2 : Math.PI/2;
+            scene.add(labelMesh);
+        }
+
+        function buildHumanAvatar(gender) {
+            const skinMat = new THREE.MeshStandardMaterial({ color: 0xffdbac });
+            const pantsMat = new THREE.MeshStandardMaterial({ color: 0x1a2f4c });
+            const shoeMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+            const shirtMat = new THREE.MeshStandardMaterial({ color: (gender === 'frau') ? 0xcc4466 : 0x2277aa });
+            const hairMat = new THREE.MeshStandardMaterial({ color: (gender === 'frau') ? 0xaa6633 : 0x332211 });
+
+            // Beine / Füße
+            const legL = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.5, 12), pantsMat); legL.position.set(-2.2, 6, 0);
+            const legR = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.5, 12), pantsMat); legR.position.set(2.2, 6, 0);
+            playerMesh.add(legL, legR);
+
+            // Rumpf
+            const torso = new THREE.Mesh(new THREE.CylinderGeometry(4, 3.5, 14), shirtMat); torso.position.y = 19;
+            playerMesh.add(torso);
+
+            // Kopf
+            const head = new THREE.Mesh(new THREE.SphereGeometry(4, 16, 16), skinMat); head.position.y = 29;
+            playerMesh.add(head);
+
+            // Haare
+            const hair = new THREE.Mesh(new THREE.SphereGeometry(4.2, 16, 16), hairMat); hair.position.set(0, 29.5, -0.3);
+            playerMesh.add(hair);
         }
 
         function initAudio() {
             if (audioCtx) return;
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const notes = [261.63, 293.66, 329.63, 349.23, 392.00];
+            const notes = [261.63, 293.66, 329.63, 392.00];
             setInterval(() => {
                 if (insideRoom) return;
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(notes[Math.floor(Math.random() * notes.length)] / 2, audioCtx.currentTime);
-                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 5);
+                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                osc.type = 'sine'; osc.frequency.setValueAtTime(notes[Math.floor(Math.random() * notes.length)] / 2, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.04, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 4);
                 osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(); osc.stop(audioCtx.currentTime + 5.1);
-            }, 4500);
-        }
-
-        function playDiscoverSound() {
-            if (!audioCtx) return;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(440, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.25);
-            gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
-            gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+                osc.start(); osc.stop(audioCtx.currentTime + 4.1);
+            }, 4000);
         }
 
         function checkPlayerPosition() {
-            if (insideRoom) return;
+            if (insideRoom || !playerMesh) return;
             const pos = playerMesh.position;
 
             for (let i = 0; i < rooms.length; i++) {
@@ -242,7 +231,7 @@
                 if (pos.x >= r.xMin && pos.x <= r.xMax && pos.z >= r.zMin && pos.z <= r.zMax) {
                     lastPlayerPos.copy(playerMesh.position);
                     insideRoom = r;
-                    playDiscoverSound();
+                    
                     document.getElementById('room-tag').innerText = r.name;
                     document.getElementById('room-photo').src = r.img;
                     document.getElementById('photo-overlay').style.display = 'flex';
@@ -254,19 +243,20 @@
         function leaveRoom() {
             document.getElementById('photo-overlay').style.display = 'none';
             insideRoom = null;
-            playerMesh.position.copy(lastPlayerPos);
             
-            if (playerMesh.position.x < -50) playerMesh.position.x += 18;
-            if (playerMesh.position.x > 50) playerMesh.position.x -= 18;
-            if (playerMesh.position.z < -100) playerMesh.position.z += 18;
-
+            if (playerMesh) {
+                playerMesh.position.copy(lastPlayerPos);
+                // Schiebe Figur zurück in den Flur
+                if (playerMesh.position.x < 0) playerMesh.position.x += 16;
+                if (playerMesh.position.x > 0) playerMesh.position.x -= 16;
+                if (playerMesh.position.z < -100) playerMesh.position.z += 16;
+            }
             for (let k in keys) keys[k] = false;
         }
 
         function onWindowResize() {
             if (!gameStarted) return;
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
+            camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
@@ -274,8 +264,8 @@
             if (!gameStarted) return;
             requestAnimationFrame(animate);
 
-            if (!insideRoom && playerMesh && playerMesh.children.length > 0) {
-                const speed = 1.8;
+            if (!insideRoom && playerMesh) {
+                const speed = 2.0;
                 let moved = false;
                 
                 if (keys.ArrowUp) { playerMesh.position.z -= speed; playerMesh.rotation.y = Math.PI; moved = true; }
@@ -283,20 +273,21 @@
                 if (keys.ArrowLeft) { playerMesh.position.x -= speed; playerMesh.rotation.y = -Math.PI / 2; moved = true; }
                 if (keys.ArrowRight) { playerMesh.position.x += speed; playerMesh.rotation.y = Math.PI / 2; moved = true; }
 
-                if (moved) {
-                    const time = Date.now() * 0.008;
-                    playerMesh.children[0].rotation.x = Math.sin(time) * 0.4; 
-                    playerMesh.children[1].rotation.x = -Math.sin(time) * 0.4; 
-                } else {
-                    if(playerMesh.children[0]) playerMesh.children[0].rotation.x = 0;
-                    if(playerMesh.children[1]) playerMesh.children[1].rotation.x = 0;
+                if (moved && playerMesh.children.length >= 2) {
+                    const time = Date.now() * 0.01;
+                    playerMesh.children[0].rotation.x = Math.sin(time) * 0.5; 
+                    playerMesh.children[1].rotation.x = -Math.sin(time) * 0.5; 
                 }
 
+                // Grenzen des Flurs/Wohnung einhalten
                 playerMesh.position.x = Math.max(-95, Math.min(95, playerMesh.position.x));
                 playerMesh.position.z = Math.max(-145, Math.min(145, playerMesh.position.z));
 
+                // Kamera folgt dem Spieler aus der Pokémon-Vogelperspektive
                 camera.position.x = playerMesh.position.x;
-                camera.position.z = playerMesh.position.z + 110;
+                camera.position.z = playerMesh.position.z + 140;
+
+                camera.lookAt(playerMesh.position.x, playerMesh.position.y + 10, playerMesh.position.z);
 
                 checkPlayerPosition();
             }
