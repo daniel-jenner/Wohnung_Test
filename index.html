@@ -6,22 +6,36 @@
     <title>3D Immobilien Simulator</title>
     <style>
         body, html { margin: 0; padding: 0; overflow: hidden; width: 100vw; height: 100vh; font-family: 'Segoe UI', sans-serif; background-color: #05050a; }
-        canvas { display: block; width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
+        
+        /* Das 3D Spielfeld ist am Anfang unsichtbar, damit es nichts blockiert */
+        #game-canvas { display: none; width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
 
-        /* Start-Bildschirm & Charakterauswahl */
-        #blocker { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(10, 10, 15, 0.95); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 30; color: #fff; text-align: center; pointer-events: auto; }
-        #instructions { padding: 35px; border: 1px solid rgba(255,255,255,0.1); background: #111116; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.6); max-width: 500px; backdrop-filter: blur(10px); pointer-events: auto; }
+        /* Start-Bildschirm im absoluten Vordergrund */
+        #blocker { 
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+            background: #0a0a14; display: flex; flex-direction: column; 
+            justify-content: center; align-items: center; z-index: 9999; color: #fff; text-align: center; 
+        }
+        #instructions { 
+            padding: 35px; border: 1px solid rgba(255,255,255,0.1); 
+            background: #111116; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); 
+            max-width: 500px; backdrop-filter: blur(10px); 
+        }
         #instructions h2 { color: #ffffff; margin-top: 0; font-size: 24px; letter-spacing: 0.5px; }
         
-        .char-selection { display: flex; gap: 30px; justify-content: center; margin-top: 25px; pointer-events: auto; }
-        .btn-char { padding: 15px 45px; border: 2px solid rgba(255,255,255,0.2); border-radius: 16px; background: #1f1f2e; color: white; font-size: 22px; font-weight: bold; cursor: pointer; transition: all 0.2s ease; line-height: 1; pointer-events: auto; position: relative; z-index: 35; }
+        .char-selection { display: flex; gap: 30px; justify-content: center; margin-top: 25px; }
+        .btn-char { 
+            padding: 15px 45px; border: 2px solid rgba(255,255,255,0.2); border-radius: 16px; 
+            background: #1f1f2e; color: white; font-size: 22px; font-weight: bold; 
+            cursor: pointer; transition: all 0.2s ease; line-height: 1; 
+        }
         .btn-char:hover { border-color: #00ddff; transform: scale(1.1); box-shadow: 0 0 25px rgba(0, 221, 255, 0.5); }
 
         /* 2D-Bild-Overlay (Wenn man einen Raum betritt) */
-        #photo-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(5, 5, 8, 0.96); z-index: 20; justify-content: center; align-items: center; flex-direction: column; pointer-events: auto; }
+        #photo-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(5, 5, 8, 0.96); z-index: 5000; justify-content: center; align-items: center; flex-direction: column; }
         #room-photo { max-width: 80vw; max-height: 70vh; border-radius: 12px; box-shadow: 0 25px 60px rgba(0,0,0,0.9); border: 1px solid rgba(255,255,255,0.1); object-fit: contain; background: #111; }
         #room-tag { color: #ffffff; font-size: 26px; font-weight: bold; margin-bottom: 15px; letter-spacing: 1px; text-transform: uppercase; }
-        #exit-btn { margin-top: 25px; padding: 14px 40px; font-size: 16px; font-weight: bold; color: white; background: #ff3b30; border: none; border-radius: 30px; cursor: pointer; box-shadow: 0 5px 15px rgba(255, 59, 48, 0.3); transition: transform 0.2s; pointer-events: auto; }
+        #exit-btn { margin-top: 25px; padding: 14px 40px; font-size: 16px; font-weight: bold; color: white; background: #ff3b30; border: none; border-radius: 30px; cursor: pointer; box-shadow: 0 5px 15px rgba(255, 59, 48, 0.3); transition: transform 0.2s; }
         #exit-btn:hover { transform: scale(1.05); background: #ff453a; }
     </style>
     <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
@@ -36,11 +50,13 @@
                Steuerung danach über die <strong>Pfeiltasten (↑, ↓, ←, →)</strong> der Tastatur.
             </p>
             <div class="char-selection">
-                <button class="btn-char" onclick="startGame('frau')">FRAU</button>
-                <button class="btn-char" onclick="startGame('mann')">MANN</button>
+                <button class="btn-char" onclick="chooseAvatar('frau')">FRAU</button>
+                <button class="btn-char" onclick="chooseAvatar('mann')">MANN</button>
             </div>
         </div>
     </div>
+
+    <canvas id="game-canvas"></canvas>
 
     <div id="photo-overlay">
         <div id="room-tag">RAUM</div>
@@ -54,6 +70,7 @@
         let audioCtx, doors = [];
         let insideRoom = null;
         let lastPlayerPos = new THREE.Vector3();
+        let gameStarted = false;
 
         const rooms = [
             { name: "BADEZIMMER", img: "bad.jpg", xMin: -150, xMax: -100, zMin: -60, zMax: -20 },
@@ -63,10 +80,23 @@
             { name: "BALKON", img: "balkon.jpg", xMin: -40, xMax: 40, zMin: -150, zMax: -110 }
         ];
 
-        init();
-        animate();
+        // 1. DIESE FUNKTION WIRD JETZT GARANTIERT BEIM KLICK AUSGEFÜHRT
+        function chooseAvatar(gender) {
+            // Blocker entfernen
+            document.getElementById('blocker').style.display = 'none';
+            
+            // 3D Canvas sichtbar machen
+            const canvas = document.getElementById('game-canvas');
+            canvas.style.display = 'block';
 
-        function init() {
+            // Erst JETZT startet die 3D Engine im Hintergrund
+            init(gender);
+            initAudio();
+            gameStarted = true;
+            animate();
+        }
+
+        function init(gender) {
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x0a0a0f);
 
@@ -92,10 +122,12 @@
             playerMesh.position.set(0, -40, 110);
             scene.add(playerMesh);
 
-            renderer = new THREE.WebGLRenderer({ antialias: true });
+            // Avatar basierend auf Auswahl bauen
+            buildHumanAvatar(gender);
+
+            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('game-canvas'), antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            document.body.appendChild(renderer.domElement);
 
             window.addEventListener('keydown', e => { if(keys.hasOwnProperty(e.key)) keys[e.key] = true; });
             window.addEventListener('keyup', e => { if(keys.hasOwnProperty(e.key)) keys[e.key] = false; });
@@ -119,8 +151,7 @@
             const shoeR = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.5, 4), shoeMat); shoeR.position.set(2.5, 0.75, 1);
             playerMesh.add(legL, legR, shoeL, shoeR);
 
-            const torso = new THREE.Mesh(new THREE.CylinderGeometry(4, 3.5, 14, 16), shirtMat);
-            torso.position.y = 19;
+            const torso = new THREE.Mesh(new THREE.CylinderGeometry(4, 3.5, 14, 16), shirtMat); torso.position.y = 19;
             playerMesh.add(torso);
 
             const neck = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 2, 12), skinMat); neck.position.y = 26;
@@ -172,12 +203,6 @@
             });
         }
 
-        function startGame(gender) {
-            document.getElementById('blocker').style.display = 'none';
-            buildHumanAvatar(gender);
-            initAudio();
-        }
-
         function initAudio() {
             if (audioCtx) return;
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -201,4 +226,83 @@
             const gain = audioCtx.createGain();
             osc.type = 'triangle';
             osc.frequency.setValueAtTime(440, audioCtx.currentTime);
-            osc.frequency.exponential
+            osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.25);
+            gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+        }
+
+        function checkPlayerPosition() {
+            if (insideRoom) return;
+            const pos = playerMesh.position;
+
+            for (let i = 0; i < rooms.length; i++) {
+                const r = rooms[i];
+                if (pos.x >= r.xMin && pos.x <= r.xMax && pos.z >= r.zMin && pos.z <= r.zMax) {
+                    lastPlayerPos.copy(playerMesh.position);
+                    insideRoom = r;
+                    playDiscoverSound();
+                    document.getElementById('room-tag').innerText = r.name;
+                    document.getElementById('room-photo').src = r.img;
+                    document.getElementById('photo-overlay').style.display = 'flex';
+                    break;
+                }
+            }
+        }
+
+        function leaveRoom() {
+            document.getElementById('photo-overlay').style.display = 'none';
+            insideRoom = null;
+            playerMesh.position.copy(lastPlayerPos);
+            
+            if (playerMesh.position.x < -50) playerMesh.position.x += 18;
+            if (playerMesh.position.x > 50) playerMesh.position.x -= 18;
+            if (playerMesh.position.z < -100) playerMesh.position.z += 18;
+
+            for (let k in keys) keys[k] = false;
+        }
+
+        function onWindowResize() {
+            if (!gameStarted) return;
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            if (!gameStarted) return;
+            requestAnimationFrame(animate);
+
+            if (!insideRoom && playerMesh && playerMesh.children.length > 0) {
+                const speed = 1.8;
+                let moved = false;
+                
+                if (keys.ArrowUp) { playerMesh.position.z -= speed; playerMesh.rotation.y = Math.PI; moved = true; }
+                if (keys.ArrowDown) { playerMesh.position.z += speed; playerMesh.rotation.y = 0; moved = true; }
+                if (keys.ArrowLeft) { playerMesh.position.x -= speed; playerMesh.rotation.y = -Math.PI / 2; moved = true; }
+                if (keys.ArrowRight) { playerMesh.position.x += speed; playerMesh.rotation.y = Math.PI / 2; moved = true; }
+
+                if (moved) {
+                    const time = Date.now() * 0.008;
+                    playerMesh.children[0].rotation.x = Math.sin(time) * 0.4; 
+                    playerMesh.children[1].rotation.x = -Math.sin(time) * 0.4; 
+                } else {
+                    if(playerMesh.children[0]) playerMesh.children[0].rotation.x = 0;
+                    if(playerMesh.children[1]) playerMesh.children[1].rotation.x = 0;
+                }
+
+                playerMesh.position.x = Math.max(-95, Math.min(95, playerMesh.position.x));
+                playerMesh.position.z = Math.max(-145, Math.min(145, playerMesh.position.z));
+
+                camera.position.x = playerMesh.position.x;
+                camera.position.z = playerMesh.position.z + 110;
+
+                checkPlayerPosition();
+            }
+
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
